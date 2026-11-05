@@ -1,0 +1,46 @@
+/* ── ActiveDashboard — Grid Layout ───────────────────────────────── */
+
+.dashboard {
+  display: grid;
+  grid-template-rows: 56px 1fr auto;
+  grid-template-columns: 260px 1fr 280px;
+  grid-template-areas:
+    'header  header  header'
+    'left    center  right'
+    'bottom  bottom  bottom';
+  height: 100vh;
+  width: 100vw;
+  gap: 0;
+  background: var(--color-bg);
+  animation: dashFadeIn 0.5s ease forwards;
+}
+
+.header { grid-area: header; }
+.left   { grid-area: left;   overflow-y: auto; padding: var(--space-md); }
+.center { grid-area: center; overflow-y: auto; padding: var(--space-md) var(--space-sm); display: flex; flex-direction: column; gap: var(--space-md); }
+.right  { grid-area: right;  overflow-y: auto; padding: var(--space-md); }
+.bottom { grid-area: bottom; }
+
+/* 1920×1080 laptop */
+@media (min-width: 1280px) {
+  .dashboard {
+    grid-template-columns: 300px 1fr 320px;
+    grid-template-rows: 60px 1fr auto;
+  }
+}
+
+/* Kiosk 1024×600 */
+@media (max-width: 1100px) {
+  .dashboard {
+    grid-template-columns: 220px 1fr 240px;
+    grid-template-rows: 50px 1fr auto;
+  }
+  .left, .center, .right {
+    padding: var(--space-sm);
+  }
+}
+
+@keyframes dashFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

@@ -1,0 +1,264 @@
+/* ── Detected Waste Panel ────────────────────────────────────────── */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.panelIcon {
+  font-size: 18px;
+  color: var(--color-primary);
+}
+
+.panelTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Detection card */
+.card {
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+  animation: fadeIn 0.4s ease;
+}
+
+.thumbnail {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: var(--color-divider);
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.thumbnailImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.thumbnailPlaceholder {
+  font-size: 36px;
+  color: var(--color-text-muted);
+  opacity: 0.4;
+}
+
+.wasteName {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+}
+
+.categoryBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 12px;
+  border-radius: var(--radius-badge);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.badgeOrganic  { background: var(--color-organic-bg); color: #15803d; }
+.badgeBio      { background: var(--color-bio-bg);     color: #6d28d9; }
+.badgeNonBio   { background: var(--color-non-bio-bg); color: #1d4ed8; }
+
+.confidence {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* Empty state */
+.emptyState {
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-2xl) var(--space-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  text-align: center;
+  min-height: 200px;
+}
+
+.emptyIcon {
+  font-size: 40px;
+  color: var(--color-text-muted);
+  opacity: 0.3;
+}
+
+.emptyTitle {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+/* Quota Notice Card */
+.quotaNotice {
+  background: #fffbeb;
+  border: 1px solid #fef3c7;
+  border-left: 4px solid #f59e0b;
+  border-radius: var(--radius-sm);
+  padding: var(--space-sm) var(--space-md);
+  margin-bottom: var(--space-xs);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: fadeIn 0.3s ease;
+}
+
+.quotaHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.quotaIcon {
+  font-size: 14px;
+}
+
+.quotaTitle {
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #b45309;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.quotaDesc {
+  font-size: var(--font-size-xs);
+  color: #92400e;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.quotaTimer {
+  font-size: 11px;
+  color: #b45309;
+  font-weight: 500;
+}
+
+.emptySub {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+/* ── Sorting Progress ────────────────────────────────────────────── */
+
+.progressCard {
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+}
+
+.progressTitle {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  margin-bottom: var(--space-md);
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  position: relative;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-sm);
+  padding: 6px 0;
+  position: relative;
+}
+
+/* Connector line */
+.step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 11px;
+  top: 28px;
+  width: 2px;
+  height: calc(100% - 16px);
+  background: var(--color-divider);
+}
+
+.step.completed:not(:last-child)::after {
+  background: var(--color-organic);
+}
+
+.stepCircle {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  position: relative;
+  z-index: 1;
+}
+
+.circlePending {
+  background: var(--color-divider);
+  color: var(--color-text-muted);
+}
+
+.circleActive {
+  background: var(--color-primary);
+  color: #fff;
+  box-shadow: 0 0 0 4px var(--color-primary-bg);
+  animation: pulse 2s infinite;
+}
+
+.circleCompleted {
+  background: var(--color-organic);
+  color: #fff;
+}
+
+.stepLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 24px;
+}
+
+.stepLabelActive {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.stepLabelCompleted {
+  color: var(--color-text);
+  font-weight: 500;
+}

@@ -1,0 +1,161 @@
+/* ── Sortyx 2.0 — Global Styles ──────────────────────────────────── */
+
+/* CSS Reset */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  /* Primary palette */
+  --color-primary: #7c3aed;
+  --color-primary-light: #a78bfa;
+  --color-primary-dark: #5b21b6;
+  --color-primary-bg: #ede9fe;
+
+  /* Category colors */
+  --color-organic: #22c55e;
+  --color-organic-light: #bbf7d0;
+  --color-organic-bg: #f0fdf4;
+  --color-bio: #8b5cf6;
+  --color-bio-light: #c4b5fd;
+  --color-bio-bg: #f5f3ff;
+  --color-non-bio: #3b82f6;
+  --color-non-bio-light: #93c5fd;
+  --color-non-bio-bg: #eff6ff;
+
+  /* Semantic */
+  --color-success: #22c55e;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+
+  /* Surfaces */
+  --color-bg: #f8f6ff;
+  --color-card: #ffffff;
+  --color-text: #1e1b2e;
+  --color-text-secondary: #6b7280;
+  --color-text-muted: #9ca3af;
+  --color-border: #e5e1f0;
+  --color-divider: #f0edf8;
+
+  /* Shadows */
+  --shadow-card: 0 2px 8px rgba(124, 58, 237, 0.08);
+  --shadow-card-hover: 0 4px 16px rgba(124, 58, 237, 0.12);
+  --shadow-badge: 0 1px 4px rgba(0, 0, 0, 0.1);
+
+  /* Radii */
+  --radius-card: 16px;
+  --radius-badge: 20px;
+  --radius-sm: 8px;
+  --radius-lg: 24px;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* Typography */
+  --font-family: system-ui, -apple-system, 'Inter', 'Segoe UI', Roboto, sans-serif;
+  --font-size-xs: 0.7rem;
+  --font-size-sm: 0.8rem;
+  --font-size-base: 0.9rem;
+  --font-size-lg: 1.05rem;
+  --font-size-xl: 1.25rem;
+  --font-size-2xl: 1.5rem;
+  --font-size-3xl: 2rem;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-base: 250ms ease;
+  --transition-slow: 500ms ease;
+}
+
+html,
+body {
+  height: 100%;
+  width: 100%;
+  overflow: hidden; /* kiosk mode — no scroll */
+  font-family: var(--font-family);
+  font-size: 16px;
+  color: var(--color-text);
+  background: var(--color-bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  height: 100%;
+  width: 100%;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-family: inherit;
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+/* Utility: fade transition wrapper */
+.fade-enter {
+  opacity: 0;
+}
+.fade-enter-active {
+  opacity: 1;
+  transition: opacity var(--transition-slow);
+}
+.fade-exit {
+  opacity: 1;
+}
+.fade-exit-active {
+  opacity: 0;
+  transition: opacity var(--transition-slow);
+}
+
+/* Scrollbar (thin, themed) */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-primary-light);
+  border-radius: 4px;
+}
+
+/* Pulse animation for active indicators */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}

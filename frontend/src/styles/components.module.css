@@ -1,0 +1,140 @@
+/* ── Shared component styles ─────────────────────────────────────── */
+
+/* Manual review alert */
+.manualReview {
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  animation: fadeIn 0.4s ease;
+}
+
+.manualReviewHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: #92400e;
+}
+
+.manualReviewIcon {
+  font-size: 20px;
+  color: #f59e0b;
+}
+
+.manualReviewBody {
+  font-size: var(--font-size-sm);
+  color: #78350f;
+  line-height: 1.5;
+}
+
+.manualReviewInstruction {
+  font-size: var(--font-size-xs);
+  color: #92400e;
+  font-weight: 600;
+  margin-top: var(--space-xs);
+}
+
+/* Error display */
+.errorCard {
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  animation: fadeIn 0.4s ease;
+}
+
+.errorHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: #b91c1c;
+}
+
+.errorIcon {
+  font-size: 20px;
+  color: #ef4444;
+}
+
+.errorBody {
+  font-size: var(--font-size-sm);
+  color: #991b1b;
+  line-height: 1.5;
+}
+
+.errorActions {
+  display: flex;
+  gap: var(--space-sm);
+  margin-top: var(--space-sm);
+}
+
+.errorBtn {
+  padding: 6px 16px;
+  border-radius: var(--radius-sm);
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  transition: background var(--transition-fast);
+}
+
+.errorBtnPrimary {
+  background: var(--color-error);
+  color: #fff;
+}
+
+.errorBtnPrimary:hover {
+  background: #dc2626;
+}
+
+.errorBtnSecondary {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.errorBtnSecondary:hover {
+  background: #fecaca;
+}
+
+/* Deposit instruction */
+.depositInstruction {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-lg);
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+  animation: fadeIn 0.4s ease;
+}
+
+.depositInstructionIcon {
+  font-size: 36px;
+  color: var(--color-primary);
+  animation: depositBounce 2s ease-in-out infinite;
+}
+
+.depositInstructionTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.depositInstructionSub {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+@keyframes depositBounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}

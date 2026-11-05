@@ -1,0 +1,102 @@
+# ============================================
+# Sortyx 2.0 — Hardware Configuration
+# ============================================
+# Copy this file to hardware.yaml and fill in actual values.
+# DO NOT commit hardware.yaml to version control.
+#
+# All values marked NOT_CONFIGURED must be set before enabling
+# that hardware component. The system will refuse to activate
+# unconfigured hardware.
+# ============================================
+
+# --- PCA9685 Servo Driver ---
+pca9685:
+  i2c_address: 0x40           # Default PCA9685 address. Verify with: sudo i2cdetect -y 1
+  i2c_bus: 1                  # Default I2C bus on Raspberry Pi 4
+  pwm_frequency: 50           # Standard servo PWM frequency (Hz)
+
+# --- Servo Motors ---
+# Each servo controls one bin lid.
+# channel: PCA9685 channel number (0-15)
+# open_angle: Degrees to open the lid (0-180)
+# close_angle: Degrees when lid is closed (0-180)
+# movement_speed: Delay between angle steps in seconds (lower = faster)
+# max_open_duration: Maximum seconds the lid stays open before auto-close
+servos:
+  bio:
+    channel: NOT_CONFIGURED      # ⚠️  Set to actual PCA9685 channel (0-15)
+    open_angle: NOT_CONFIGURED   # ⚠️  Set to actual open angle (degrees)
+    close_angle: NOT_CONFIGURED  # ⚠️  Set to actual close angle (degrees)
+    movement_speed: 0.02
+    max_open_duration: 30
+    pulse_width_min: 500         # Microseconds — adjust for your servo model
+    pulse_width_max: 2500        # Microseconds — adjust for your servo model
+
+  organic:
+    channel: NOT_CONFIGURED
+    open_angle: NOT_CONFIGURED
+    close_angle: NOT_CONFIGURED
+    movement_speed: 0.02
+    max_open_duration: 30
+    pulse_width_min: 500
+    pulse_width_max: 2500
+
+  non_bio:
+    channel: NOT_CONFIGURED
+    open_angle: NOT_CONFIGURED
+    close_angle: NOT_CONFIGURED
+    movement_speed: 0.02
+    max_open_duration: 30
+    pulse_width_min: 500
+    pulse_width_max: 2500
+
+# --- Ultrasonic Sensors (HC-SR04) ---
+# Each sensor measures bin fill level.
+# trigger_pin: BCM GPIO pin connected to sensor TRIGGER
+# echo_pin: BCM GPIO pin connected to sensor ECHO
+# empty_distance_cm: Distance reading when bin is empty (cm)
+# full_distance_cm: Distance reading when bin is full (cm)
+# reading_interval: Seconds between readings
+# median_filter_size: Number of readings for noise smoothing
+ultrasonic_sensors:
+  bio:
+    trigger_pin: NOT_CONFIGURED   # ⚠️  Set to actual BCM GPIO pin
+    echo_pin: NOT_CONFIGURED      # ⚠️  Set to actual BCM GPIO pin
+    empty_distance_cm: NOT_CONFIGURED  # ⚠️  Calibrate with empty bin
+    full_distance_cm: NOT_CONFIGURED   # ⚠️  Calibrate with full bin
+    reading_interval: 2.0
+    median_filter_size: 5
+
+  organic:
+    trigger_pin: NOT_CONFIGURED
+    echo_pin: NOT_CONFIGURED
+    empty_distance_cm: NOT_CONFIGURED
+    full_distance_cm: NOT_CONFIGURED
+    reading_interval: 2.0
+    median_filter_size: 5
+
+  non_bio:
+    trigger_pin: NOT_CONFIGURED
+    echo_pin: NOT_CONFIGURED
+    empty_distance_cm: NOT_CONFIGURED
+    full_distance_cm: NOT_CONFIGURED
+    reading_interval: 2.0
+    median_filter_size: 5
+
+# --- Deposit Confirmation ---
+# Strategy for confirming waste has been deposited.
+# distance_change_threshold_cm: Minimum decrease in distance to confirm deposit.
+# confirmation_readings: Number of stable readings required.
+# timeout_seconds: Auto-close if no deposit detected.
+deposit_confirmation:
+  distance_change_threshold_cm: 2.0
+  confirmation_readings: 3
+  timeout_seconds: 15
+
+# --- External Power ---
+# CRITICAL: Never power servos from the Raspberry Pi 5V pin.
+# Use a dedicated external 5V power supply connected to PCA9685 V+ terminal.
+external_power:
+  voltage: 5.0
+  supply_connected: false  # ⚠️  Set to true only after connecting external supply
+

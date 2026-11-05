@@ -1,0 +1,25 @@
+[Unit]
+Description=Sortyx 2.0 Smart Waste Segregation Backend (FastAPI & Hardware)
+Documentation=https://github.com/Sortyx/Sortyx2
+After=network-online.target time-sync.target
+Wants=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Sortyx2/backend
+Environment=PYTHONUNBUFFERED=1
+ExecStartPre=/bin/sh -c 'fuser -k 8000/tcp || true'
+ExecStart=/home/pi/Sortyx2/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+KillSignal=SIGTERM
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

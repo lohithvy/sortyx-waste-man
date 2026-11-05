@@ -1,0 +1,113 @@
+/* ── Bin Status Panel + Card ─────────────────────────────────────── */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.panelHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-xs);
+}
+
+.panelIcon {
+  font-size: 18px;
+  color: var(--color-primary);
+}
+
+.panelTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+/* Card */
+.card {
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  padding: var(--space-lg);
+  box-shadow: var(--shadow-card);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  transition: box-shadow var(--transition-fast);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-card-hover);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.cardCategory {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.cardIcon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
+.iconOrganic  { background: var(--color-organic-bg); color: var(--color-organic); }
+.iconBio      { background: var(--color-bio-bg);     color: var(--color-bio); }
+.iconNonBio   { background: var(--color-non-bio-bg); color: var(--color-non-bio); }
+
+.cardName {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.cardPercent {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+}
+
+.percentOrganic  { color: var(--color-organic); }
+.percentBio      { color: var(--color-bio); }
+.percentNonBio   { color: var(--color-non-bio); }
+
+/* Progress bar */
+.progressTrack {
+  width: 100%;
+  height: 8px;
+  background: var(--color-divider);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease;
+}
+
+.fillOrganic  { background: var(--color-organic); }
+.fillBio      { background: var(--color-bio); }
+.fillNonBio   { background: var(--color-non-bio); }
+
+/* Sensor status */
+.sensorStatus {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+  margin-top: var(--space-xs);
+}
+
+.sensorOk {
+  color: var(--color-organic);
+}

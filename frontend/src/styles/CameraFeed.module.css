@@ -1,0 +1,375 @@
+/* ── Camera Feed ─────────────────────────────────────────────────── */
+
+.wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.container {
+  position: relative;
+  flex: 1;
+  min-height: 260px;
+  background: #1a1625;
+  border-radius: var(--radius-card);
+  overflow: hidden;
+  box-shadow: var(--shadow-card);
+  border: 2px solid rgba(124, 58, 237, 0.15);
+}
+
+/* Badges */
+.badge {
+  position: absolute;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border-radius: var(--radius-badge);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  box-shadow: var(--shadow-badge);
+}
+
+.badgeLive {
+  top: var(--space-md);
+  left: var(--space-md);
+  background: rgba(34, 197, 94, 0.9);
+  color: #fff;
+}
+
+.badgeAI {
+  top: var(--space-md);
+  right: var(--space-md);
+  background: rgba(124, 58, 237, 0.9);
+  color: #fff;
+}
+
+.badgeQuota {
+  top: var(--space-md);
+  right: var(--space-md);
+  background: rgba(217, 119, 6, 0.95);
+  color: #fff;
+}
+
+/* Corner brackets */
+.corners {
+  position: absolute;
+  inset: 20px;
+  z-index: 3;
+  pointer-events: none;
+}
+
+.corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: rgba(167, 139, 250, 0.7);
+  border-style: solid;
+}
+
+.cornerTL { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 6px 0 0 0; }
+.cornerTR { top: 0; right: 0; border-width: 3px 3px 0 0; border-radius: 0 6px 0 0; }
+.cornerBL { bottom: 0; left: 0; border-width: 0 0 3px 3px; border-radius: 0 0 0 6px; }
+.cornerBR { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 6px 0; }
+
+/* Detection label */
+.detectionLabel {
+  position: absolute;
+  bottom: var(--space-xl);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: rgba(124, 58, 237, 0.92);
+  color: #fff;
+  padding: 6px 18px;
+  border-radius: var(--radius-badge);
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(124, 58, 237, 0.3);
+  animation: fadeIn 0.3s ease;
+}
+
+/* Placeholder */
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  color: rgba(167, 139, 250, 0.5);
+}
+
+.placeholderIcon {
+  font-size: 48px;
+  opacity: 0.4;
+}
+
+.placeholderText {
+  font-size: var(--font-size-sm);
+  opacity: 0.5;
+}
+
+/* Camera image/video */
+.feedImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Deposit instruction below camera */
+.depositArea {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-xs);
+  padding: var(--space-md);
+  background: var(--color-card);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.depositIcon {
+  font-size: 28px;
+  color: var(--color-primary);
+}
+
+.depositTitle {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.depositSub {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Bounding Box overlay matching design reference */
+.boundingBox {
+  position: absolute;
+  top: 20%;
+  left: 28%;
+  right: 28%;
+  bottom: 22%;
+  border: 2px solid #a855f7;
+  border-radius: 18px;
+  box-shadow: 0 0 24px rgba(168, 85, 247, 0.3), inset 0 0 16px rgba(168, 85, 247, 0.15);
+  pointer-events: none;
+  z-index: 4;
+  animation: pulseBox 2s infinite ease-in-out;
+}
+
+@keyframes pulseBox {
+  0%, 100% { border-color: #a855f7; box-shadow: 0 0 20px rgba(168, 85, 247, 0.3); }
+  50% { border-color: #c084fc; box-shadow: 0 0 30px rgba(192, 132, 252, 0.45); }
+}
+
+.detectionTag {
+  position: absolute;
+  top: -16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #9333ea;
+  color: #ffffff;
+  padding: 4px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgba(147, 51, 234, 0.4);
+  white-space: nowrap;
+}
+
+.tagIcon {
+  font-size: 14px;
+}
+
+.tagName {
+  font-weight: 600;
+}
+
+.tagConf {
+  font-weight: 700;
+  opacity: 0.9;
+}
+
+/* Analyzing Waste Overlay */
+.analyzingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: rgba(15, 12, 25, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border: 3.5px solid rgba(167, 139, 250, 0.2);
+  border-top-color: #a855f7;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.analyzingText {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.3px;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.analyzingSub {
+  font-size: 12px;
+  color: #c4b5fd;
+  font-weight: 500;
+}
+
+/* Reposition Guidance Banner */
+.repositionBanner {
+  position: absolute;
+  top: 54px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  background: rgba(234, 88, 12, 0.92);
+  color: #ffffff;
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.35);
+  animation: fadeIn 0.2s ease-out;
+  white-space: nowrap;
+}
+
+.repositionIcon {
+  font-size: 14px;
+}
+
+/* Badge for Analyzing */
+.badgeAnalyzing {
+  top: var(--space-md);
+  left: var(--space-md);
+  background: rgba(168, 85, 247, 0.95);
+  color: #ffffff;
+}
+
+.pulseDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ffffff;
+  animation: pulseDotAnim 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseDotAnim {
+  0%, 100% { opacity: 0.4; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Camera Controls Bar */
+.cameraControlsBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-sm);
+  padding: 6px 12px;
+  background: rgba(26, 22, 37, 0.85);
+  border-radius: var(--radius-badge);
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.cameraDeviceGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+}
+
+.cameraLabel {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 600;
+  color: #c4b5fd;
+  white-space: nowrap;
+}
+
+.cameraSelect {
+  background: rgba(15, 12, 25, 0.9);
+  color: #f1f5f9;
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  max-width: 200px;
+  text-overflow: ellipsis;
+}
+
+.cameraSelect:hover {
+  border-color: #a855f7;
+}
+
+.cameraInfoPill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: #94a3b8;
+  white-space: nowrap;
+}
+
+.statusDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+}
+
+.reconnectButton {
+  background: rgba(124, 58, 237, 0.2);
+  color: #c4b5fd;
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+.reconnectButton:hover {
+  background: rgba(124, 58, 237, 0.4);
+  color: #ffffff;
+  border-color: #a855f7;
+}

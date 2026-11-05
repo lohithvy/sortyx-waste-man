@@ -1,0 +1,22 @@
+[Unit]
+Description=Sortyx 2.0 Kiosk React Dashboard Service
+Documentation=https://github.com/Sortyx/Sortyx2
+After=sortyx-backend.service network.target
+Wants=sortyx-backend.service
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/Sortyx2/frontend
+ExecStartPre=/bin/sh -c 'fuser -k 5173/tcp || true'
+ExecStart=/usr/bin/npm run preview -- --host 0.0.0.0 --port 5173
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

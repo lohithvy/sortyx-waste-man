@@ -1,0 +1,74 @@
+# ============================================
+# Sortyx 2.0 — Application Configuration
+# ============================================
+# Copy this file to application.yaml for customization.
+# Secrets go in backend/.env, NOT here.
+# ============================================
+
+# --- Camera ---
+camera:
+  source: WEBCAM           # WEBCAM or RASPBERRY_PI
+  index: 0                 # Webcam device index (for WEBCAM source)
+  resolution_width: 640
+  resolution_height: 480
+  fps: 30
+  warmup_frames: 10        # Frames to skip on startup for auto-exposure
+
+# --- AI Classification ---
+classification:
+  confidence_threshold: 0.75    # Minimum confidence to accept classification (0.0-1.0)
+  gemini_timeout_seconds: 15    # Timeout for Gemini API calls
+  max_retries: 1                # Retries on transient Gemini failures
+  categories:
+    - bio
+    - organic
+    - non_bio
+
+# --- Hand Tracking ---
+hand_tracking:
+  model_complexity: 0           # 0=Lite (fast, for Pi), 1=Full
+  min_detection_confidence: 0.6
+  min_tracking_confidence: 0.5
+  max_num_hands: 2
+  stable_frames_required: 5     # Consecutive frames with hand before capture
+
+# --- State Machine ---
+state_machine:
+  idle_detection_interval: 1.0  # Seconds between presence checks in IDLE
+  camera_active_timeout: 60     # Seconds before returning to IDLE if no hand
+  classification_timeout: 20    # Seconds waiting for Gemini response
+  result_display_duration: 3    # Seconds to show result before servo
+  deposit_timeout: 15           # Seconds waiting for deposit
+  error_display_duration: 5     # Seconds to show error before IDLE
+  manual_review_duration: 10    # Seconds to show manual review warning
+
+# --- Database ---
+database:
+  sync_interval: 5              # Seconds between sensor reading syncs
+  offline_queue_max_size: 100   # Max events to queue when offline
+  retry_interval: 30            # Seconds between offline queue retries
+
+# --- Logging ---
+logging:
+  level: INFO                   # DEBUG, INFO, WARNING, ERROR
+  file_enabled: false
+  file_path: logs/sortyx.log
+  max_file_size_mb: 10
+  backup_count: 5
+
+# --- Display ---
+display:
+  target_resolution: "1024x600"  # Raspberry Pi display
+  fullscreen: true
+  cursor_visible: false          # Hide cursor in kiosk mode
+
+# --- Security ---
+security:
+  rate_limit_requests_per_minute: 30
+  nonce_cache_ttl_seconds: 300
+  request_timestamp_tolerance_seconds: 30
+  cors_origins:
+    - "http://localhost:5173"     # Vite dev server
+    - "http://localhost:3000"
+    - "http://127.0.0.1:5173"
+
