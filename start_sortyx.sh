@@ -90,3 +90,4 @@ fi
 
 # Cleanup on exit
 trap "kill ${BACKEND_PID} ${FRONTEND_PID} 2>/dev/null || true" EXIT
+

@@ -22,13 +22,14 @@ interface CameraStatus {
 
 export default function CameraFeed() {
   const { state } = useAppState();
-  const [streamActive, setStreamActive] = useState(true);
   const [devices, setDevices] = useState<CameraDevice[]>([]);
   const [cameraStatus, setCameraStatus] = useState<CameraStatus | null>(null);
   const [switching, setSwitching] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
 
-  // Technical implementation states:
-  const liveFrame = '/api/camera/stream';
+  // API base URL
+  const apiUrl = import.meta.env.VITE_API_URL || '';
+  const liveStreamUrl = `${apiUrl}/api/camera/stream`;
   const [capturedFrame, setCapturedFrame] = useState<string | null>(null);
 
   // sortingInProgress: whether the sorting workflow is active
@@ -49,13 +50,13 @@ export default function CameraFeed() {
         if (prev) return prev; // Do not overwrite capturedFrame until sorting is complete
         if (state.frozenImageUrl) return state.frozenImageUrl;
         if (state.classificationResult?.imageUrl) return state.classificationResult.imageUrl;
-        return `/api/camera/captured?t=${Date.now()}`;
+        return `${apiUrl}/api/camera/captured?t=${Date.now()}`;
       });
     } else if (state.systemState === SystemState.Idle) {
       // Only release the frozen frame and resume live camera preview after sorting finishes and system is Idle
       setCapturedFrame(null);
     }
-  }, [sortingInProgress, state.systemState, state.frozenImageUrl, state.classificationResult]);
+  }, [sortingInProgress, state.systemState, state.frozenImageUrl, state.classificationResult, apiUrl]);
 
   const showDeposit = [
     SystemState.AwaitingDeposit,
@@ -213,7 +214,7 @@ export default function CameraFeed() {
           <div className={`${styles.corner} ${styles.cornerBR}`} />
         </div>
 
-        {/* Centre Camera Preview: Renders capturedFrame throughout sorting, liveFrame when idle */}
+        {/* Centre Camera Preview: Renders capturedFrame throughout sorting, liveStream when idle/active */}
         {sortingInProgress && capturedFrame ? (
           <img
             src={capturedFrame}
@@ -221,25 +222,17 @@ export default function CameraFeed() {
             className={styles.feedImage}
             key="captured-sorting-frame"
           />
-        ) : streamActive ? (
+        ) : (
           <img
-            src={liveFrame}
+            src={`${liveStreamUrl}?t=${retryKey}`}
             alt="Sortyx Live Camera"
             className={styles.feedImage}
-            onError={() => setStreamActive(false)}
-            onLoad={() => setStreamActive(true)}
-            key="live-camera-feed"
+            onError={() => {
+              // Automatically retry connecting to the camera stream after 1.5s
+              setTimeout(() => setRetryKey((k) => k + 1), 1500);
+            }}
+            key={`live-camera-feed-${retryKey}`}
           />
-        ) : (
-          <div className={styles.placeholder}>
-            <span className={styles.placeholderIcon}>
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                <circle cx="12" cy="13" r="4"/>
-              </svg>
-            </span>
-            <span className={styles.placeholderText}>Camera Feed — Sortyx 2.0</span>
-          </div>
         )}
       </div>
 

@@ -138,3 +138,4 @@ export default function AdScreensaver() {
 function ctaTextGroupClass(styles: Record<string, string>): string {
   return styles.ctaTextGroup || '';
 }
+

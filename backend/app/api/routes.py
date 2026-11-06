@@ -142,13 +142,12 @@ async def get_camera_status(request: Request) -> Dict[str, Any]:
 
 @router.get("/camera/stream")
 async def camera_stream(request: Request) -> StreamingResponse:
-    """Stream live camera feed (MJPEG) with hand tracking overlay.
+    """Stream live camera feed (MJPEG).
 
     Frames are strictly temporary in memory and are never saved to disk.
     Stream continues uninterrupted during AI classification without freezing.
     """
     camera = getattr(request.app.state, "camera_service", None)
-    tracker = getattr(request.app.state, "hand_tracking_service", None)
 
     async def frame_generator():
         while True:
@@ -161,27 +160,33 @@ async def camera_stream(request: Request) -> StreamingResponse:
                 await asyncio.sleep(0.033)
                 continue
 
-            # Annotate with hand landmarks if available (in memory only)
-            annotated = tracker.annotate_frame(frame) if tracker else frame
-
-            # Encode to JPEG in memory
-            ret, jpeg = cv2.imencode(".jpg", annotated, [cv2.IMWRITE_JPEG_QUALITY, 75])
+            # Clean raw camera frame without CPU-heavy overlays
+            ret, jpeg = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
             if ret:
+                data = jpeg.tobytes()
                 yield (
                     b"--frame\r\n"
-                    b"Content-Type: image/jpeg\r\n\r\n" + jpeg.tobytes() + b"\r\n"
+                    b"Content-Type: image/jpeg\r\n"
+                    b"Content-Length: " + str(len(data)).encode("ascii") + b"\r\n\r\n"
+                    + data
+                    + b"\r\n"
                 )
             await asyncio.sleep(0.033)  # ~30 FPS
 
     return StreamingResponse(
         frame_generator(),
         media_type="multipart/x-mixed-replace; boundary=frame",
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate, pre-check=0, post-check=0, max-age=0",
+            "Pragma": "no-cache",
+            "Connection": "close",
+        },
     )
 
 
 @router.get("/camera/captured")
 async def get_captured_frame(request: Request) -> Response:
-    """Return the currently frozen in-memory JPEG frame."""
+    """Return the currently frozen in-memory JPEG frame, or latest camera frame."""
     sorting = getattr(request.app.state, "sorting_service", None)
     if sorting and sorting.frozen_frame_bytes:
         return Response(
@@ -189,6 +194,18 @@ async def get_captured_frame(request: Request) -> Response:
             media_type="image/jpeg",
             headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
         )
+    # Fallback to latest live camera frame if no frozen frame is cached
+    camera = getattr(request.app.state, "camera_service", None)
+    if camera and camera.is_available():
+        frame = camera.read_frame()
+        if frame is not None:
+            ret, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
+            if ret:
+                return Response(
+                    content=buf.tobytes(),
+                    media_type="image/jpeg",
+                    headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+                )
     raise HTTPException(status_code=404, detail="No captured frame available")
 
 

@@ -51,3 +51,4 @@ echo " 2. Open Chromium fullscreen displaying the ad video."
 echo " 3. Wake up the sorting dashboard when a hand is detected."
 echo " 4. Resume the ad video when no hands are in view."
 echo "=========================================================="
+
