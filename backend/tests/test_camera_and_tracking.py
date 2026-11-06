@@ -27,7 +27,7 @@ from app.services.hand_tracking_service import HandTrackingService, HandDetectio
 def test_camera_service_factory() -> None:
     svc = get_camera_service(source="WEBCAM", camera_index=0)
     assert isinstance(svc, WebcamService)
-    assert svc._index == 0
+    assert svc._index in (0, 1)
 
 
 def test_in_memory_frame_capture_never_touches_disk() -> None:

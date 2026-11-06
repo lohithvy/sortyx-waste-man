@@ -49,6 +49,16 @@ class ServoService:
     def _get_bin_config(self, bin_id: BinId) -> ServoConfig:
         """Retrieve servo configuration for given bin."""
         key = bin_id.value
+        if key in self.config.bins and self.config.bins[key].servo.is_configured:
+            return self.config.bins[key].servo
+        alias_map = {
+            BinId.FOOD_WASTE: "organic",
+            BinId.RECYCLABLE: "bio",
+            BinId.NON_RECYCLABLE: "non_bio",
+        }
+        alias = alias_map.get(bin_id)
+        if alias and alias in self.config.bins and self.config.bins[alias].servo.is_configured:
+            return self.config.bins[alias].servo
         if key in self.config.bins:
             return self.config.bins[key].servo
         return ServoConfig()

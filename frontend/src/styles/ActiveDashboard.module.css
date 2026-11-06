@@ -13,6 +13,14 @@
   gap: 0;
   background: var(--color-bg);
   animation: dashFadeIn 0.5s ease forwards;
+  transition: filter 0.35s ease, -webkit-filter 0.35s ease;
+}
+
+.blurred {
+  filter: blur(12px);
+  -webkit-filter: blur(12px);
+  pointer-events: none;
+  user-select: none;
 }
 
 .header { grid-area: header; }

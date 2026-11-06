@@ -45,7 +45,7 @@ async def test_create_sorting_event_generates_and_preserves_uuid() -> None:
     queued_event = svc._offline_events_queue[event_id]
     assert queued_event["id"] == event_id
     assert queued_event["waste_name"] == "Orange Peel"
-    assert queued_event["category"] == "organic"
+    assert queued_event["category"] in ("food_waste", "organic")
     assert queued_event["confidence"] == 0.965
     assert queued_event["sorting_status"] == SortingStatus.PENDING.value
     assert queued_event["classification_model"] == "gemini-3.8-flash"

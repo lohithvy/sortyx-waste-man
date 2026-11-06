@@ -17,9 +17,12 @@ const stepKeys = {
 
 function formatCategory(cat: string) {
   switch (cat) {
-    case 'organic': return 'Organic';
-    case 'bio': return 'Bio';
-    case 'non_bio': return 'Non-Bio';
+    case 'food_waste':
+    case 'organic': return 'Food Waste';
+    case 'recyclable':
+    case 'bio': return 'Recyclable';
+    case 'non_recyclable':
+    case 'non_bio': return 'Non-Recyclable';
     default: return cat;
   }
 }

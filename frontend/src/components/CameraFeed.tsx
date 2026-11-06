@@ -26,21 +26,36 @@ export default function CameraFeed() {
   const [devices, setDevices] = useState<CameraDevice[]>([]);
   const [cameraStatus, setCameraStatus] = useState<CameraStatus | null>(null);
   const [switching, setSwitching] = useState(false);
-  const result = state.classificationResult;
 
-  const isAnalyzing = [
+  // Technical implementation states:
+  const liveFrame = '/api/camera/stream';
+  const [capturedFrame, setCapturedFrame] = useState<string | null>(null);
+
+  // sortingInProgress: whether the sorting workflow is active
+  const sortingInProgress = [
     SystemState.ImageCapture,
     SystemState.Classifying,
-  ].includes(state.systemState);
+    SystemState.ClassificationResult,
+    SystemState.ServoOpening,
+    SystemState.AwaitingDeposit,
+    SystemState.LidClosing,
+    SystemState.ManualReview,
+  ].includes(state.systemState) || (state.systemState === SystemState.Error && capturedFrame !== null);
 
-  const showDetection =
-    result &&
-    [
-      SystemState.ClassificationResult,
-      SystemState.ServoOpening,
-      SystemState.AwaitingDeposit,
-      SystemState.LidClosing,
-    ].includes(state.systemState);
+  // Latch capturedFrame ONCE when sorting begins and keep it throughout
+  useEffect(() => {
+    if (sortingInProgress) {
+      setCapturedFrame((prev) => {
+        if (prev) return prev; // Do not overwrite capturedFrame until sorting is complete
+        if (state.frozenImageUrl) return state.frozenImageUrl;
+        if (state.classificationResult?.imageUrl) return state.classificationResult.imageUrl;
+        return `/api/camera/captured?t=${Date.now()}`;
+      });
+    } else if (state.systemState === SystemState.Idle) {
+      // Only release the frozen frame and resume live camera preview after sorting finishes and system is Idle
+      setCapturedFrame(null);
+    }
+  }, [sortingInProgress, state.systemState, state.frozenImageUrl, state.classificationResult]);
 
   const showDeposit = [
     SystemState.AwaitingDeposit,
@@ -99,17 +114,6 @@ export default function CameraFeed() {
     }
   };
 
-  const categoryIcon =
-    result?.category === 'organic'
-      ? '🍃'
-      : result?.category === 'bio'
-      ? '📄'
-      : '♻️';
-
-  const confidencePct = result
-    ? Math.round(result.confidence <= 1 ? result.confidence * 100 : result.confidence)
-    : 0;
-
   return (
     <div className={styles.wrapper}>
       {/* Device Selector & Hardware Status Bar */}
@@ -161,10 +165,10 @@ export default function CameraFeed() {
 
       <div className={styles.container}>
         {/* Badges */}
-        {isAnalyzing ? (
+        {sortingInProgress ? (
           <div className={`${styles.badge} ${styles.badgeAnalyzing}`}>
             <div className={styles.pulseDot} />
-            Analyzing Waste (~2s)
+            Sorting Active
           </div>
         ) : (
           <div className={`${styles.badge} ${styles.badgeLive}`}>
@@ -193,8 +197,8 @@ export default function CameraFeed() {
           </div>
         )}
 
-        {/* Reposition Banner */}
-        {state.repositionMessage && !isAnalyzing && (
+        {/* Reposition Banner (only when live before sorting starts) */}
+        {state.repositionMessage && !sortingInProgress && (
           <div className={styles.repositionBanner}>
             <span className={styles.repositionIcon}>⚠️</span>
             <span>{state.repositionMessage}</span>
@@ -209,14 +213,22 @@ export default function CameraFeed() {
           <div className={`${styles.corner} ${styles.cornerBR}`} />
         </div>
 
-        {/* Live Camera Feed: Never frozen, streams continuously at 30 FPS */}
-        {streamActive ? (
+        {/* Centre Camera Preview: Renders capturedFrame throughout sorting, liveFrame when idle */}
+        {sortingInProgress && capturedFrame ? (
           <img
-            src="/api/camera/stream"
+            src={capturedFrame}
+            alt="Captured Waste Frame"
+            className={styles.feedImage}
+            key="captured-sorting-frame"
+          />
+        ) : streamActive ? (
+          <img
+            src={liveFrame}
             alt="Sortyx Live Camera"
             className={styles.feedImage}
             onError={() => setStreamActive(false)}
             onLoad={() => setStreamActive(true)}
+            key="live-camera-feed"
           />
         ) : (
           <div className={styles.placeholder}>
@@ -227,26 +239,6 @@ export default function CameraFeed() {
               </svg>
             </span>
             <span className={styles.placeholderText}>Camera Feed — Sortyx 2.0</span>
-          </div>
-        )}
-
-        {/* Analyzing Waste Overlay (Renders on top without freezing video stream) */}
-        {isAnalyzing && (
-          <div className={styles.analyzingOverlay}>
-            <div className={styles.spinner} />
-            <div className={styles.analyzingText}>Analyzing waste...</div>
-            <div className={styles.analyzingSub}>Sortyx Cloud AI identifying item (~2s)</div>
-          </div>
-        )}
-
-        {/* Bounding box around detected waste */}
-        {showDetection && result && (
-          <div className={styles.boundingBox}>
-            <div className={styles.detectionTag}>
-              <span className={styles.tagIcon}>{categoryIcon}</span>
-              <span className={styles.tagName}>{result.wasteName}</span>
-              <span className={styles.tagConf}>{confidencePct}%</span>
-            </div>
           </div>
         )}
       </div>

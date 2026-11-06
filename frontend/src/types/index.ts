@@ -14,14 +14,27 @@ export enum SystemState {
   ManualReview = 'manual_review',
 }
 
-export type WasteCategory = 'bio' | 'organic' | 'non_bio';
+export type WasteCategory =
+  | 'food_waste'
+  | 'recyclable'
+  | 'non_recyclable'
+  | 'organic'
+  | 'bio'
+  | 'non_bio';
 
 export interface BinStatus {
   id: string;
+  binNumber?: number;
   category: WasteCategory;
   displayName: string;
+  title?: string;
   fillPercentage: number;
   sensorStatus: 'ok' | 'error' | 'not_configured';
+  weightKg?: number | null;
+  weightDisplay?: string;
+  isCalibrated?: boolean;
+  loadCellConnected?: boolean;
+  loadCellStatus?: string;
 }
 
 export interface ClassificationResult {
@@ -32,6 +45,7 @@ export interface ClassificationResult {
   isHazardous: boolean;
   requiresManualReview: boolean;
   imageUrl?: string;
+  binId?: string;
 }
 
 export interface SortingProgress {
@@ -44,9 +58,12 @@ export interface SortingProgress {
 
 export interface DailyStats {
   totalItems: number;
-  organic: number;
-  bio: number;
-  nonBio: number;
+  foodWaste: number;
+  recyclable: number;
+  nonRecyclable: number;
+  organic?: number;
+  bio?: number;
+  nonBio?: number;
 }
 
 export interface WSMessage {

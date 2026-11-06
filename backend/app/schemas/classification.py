@@ -76,11 +76,22 @@ class GeminiClassificationResponse(BaseModel):
         normalised = v.strip().lower().replace("-", "_").replace(" ", "_")
         if normalised in ("none", "null", "unknown", "other", "unidentified", "ambiguous", ""):
             return None
-        valid = {c.value for c in WasteCategory}
-        if normalised in valid:
-            return normalised
+        aliases = {
+            "organic": "food_waste",
+            "bio": "recyclable",
+            "biodegradable": "recyclable",
+            "non_bio": "non_recyclable",
+            "nonbio": "non_recyclable",
+            "food": "food_waste",
+            "food_waste": "food_waste",
+            "recyclable": "recyclable",
+            "non_recyclable": "non_recyclable",
+        }
+        if normalised in aliases:
+            return aliases[normalised]
         if normalised == "hazardous":
             return "hazardous"
+        valid = {c.value for c in WasteCategory}
         raise ValueError(
             f"Invalid category '{v}'. Must be one of: {', '.join(valid)} or null"
         )

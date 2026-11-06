@@ -62,13 +62,30 @@
   font-size: 16px;
 }
 
-.iconOrganic  { background: var(--color-organic-bg); color: var(--color-organic); }
-.iconBio      { background: var(--color-bio-bg);     color: var(--color-bio); }
-.iconNonBio   { background: var(--color-non-bio-bg); color: var(--color-non-bio); }
+.iconFoodWaste,
+.iconOrganic      { background: var(--color-food-waste-bg);     color: var(--color-food-waste); }
+.iconRecyclable,
+.iconBio          { background: var(--color-recyclable-bg);     color: var(--color-recyclable); }
+.iconNonRecyclable,
+.iconNonBio       { background: var(--color-non-recyclable-bg); color: var(--color-non-recyclable); }
+
+.cardTitleGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardBinTitle {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+}
 
 .cardName {
   font-size: var(--font-size-base);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text);
 }
 
@@ -77,28 +94,102 @@
   font-weight: 700;
 }
 
-.percentOrganic  { color: var(--color-organic); }
-.percentBio      { color: var(--color-bio); }
-.percentNonBio   { color: var(--color-non-bio); }
+.percentFoodWaste,
+.percentOrganic      { color: var(--color-food-waste); }
+.percentRecyclable,
+.percentBio          { color: var(--color-recyclable); }
+.percentNonRecyclable,
+.percentNonBio       { color: var(--color-non-recyclable); }
+
+/* Weight display section */
+.weightSection {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: #fbfaff;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-divider);
+  margin-top: 2px;
+}
+
+.weightLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: 600;
+}
+
+.weightValue {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: var(--color-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.notCalibratedBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #b45309;
+  background: #fef3c7;
+  padding: 2px 8px;
+  border-radius: 6px;
+  border: 1px solid #fde68a;
+}
+
+/* Load cell connection status */
+.loadCellRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.statusDotConnected {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+}
+
+.statusDotDisconnected {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ef4444;
+}
+
+.loadCellText {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
 
 /* Progress bar */
 .progressTrack {
   width: 100%;
-  height: 8px;
+  height: 6px;
   background: var(--color-divider);
-  border-radius: 4px;
+  border-radius: 3px;
   overflow: hidden;
+  margin-top: 4px;
 }
 
 .progressFill {
   height: 100%;
-  border-radius: 4px;
+  border-radius: 3px;
   transition: width 0.6s ease;
 }
 
-.fillOrganic  { background: var(--color-organic); }
-.fillBio      { background: var(--color-bio); }
-.fillNonBio   { background: var(--color-non-bio); }
+.fillFoodWaste,
+.fillOrganic      { background: var(--color-food-waste); }
+.fillRecyclable,
+.fillBio          { background: var(--color-recyclable); }
+.fillNonRecyclable,
+.fillNonBio       { background: var(--color-non-recyclable); }
 
 /* Sensor status */
 .sensorStatus {

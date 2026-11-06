@@ -39,7 +39,7 @@ class ServoConfig(BaseModel):
     pulse_width_max: int = Field(default=2500, ge=2000, le=3000, description="Maximum pulse width (µs)")
     max_open_duration: float = Field(
         default=30.0,
-        ge=5.0,
+        ge=1.0,
         le=120.0,
         description="Maximum seconds the lid stays open before auto-close watchdog",
     )
@@ -98,10 +98,9 @@ class BinHardwareConfig(BaseModel):
 
 
 class HardwareConfig(BaseModel):
-    """Full hardware configuration, typically loaded from ``hardware.yaml``.
-
-    All parameters default to NOT_CONFIGURED so that the application
-    can start safely on a laptop without any real hardware.
+    """Full hardware configuration, loaded directly from environment settings (.env).
+    
+    Populates PCA9685 servo channels and HC-SR04 ultrasonic sensor pins from HardwareSettings.
     """
 
     pca9685_address: int = Field(default=0x40, description="I2C address of PCA9685")
@@ -109,17 +108,85 @@ class HardwareConfig(BaseModel):
     pwm_frequency: int = Field(default=50, description="PWM frequency in Hz (typically 50 for analog/digital servos)")
     servo_max_open_seconds: float = Field(
         default=30.0,
-        ge=5.0,
+        ge=1.0,
         le=120.0,
         description="Maximum time a bin lid may remain open before safety watchdog close",
     )
-    bins: dict[str, BinHardwareConfig] = Field(
-        default_factory=lambda: {
-            "bio": BinHardwareConfig(),
-            "organic": BinHardwareConfig(),
-            "non_bio": BinHardwareConfig(),
-        }
-    )
+    bins: dict[str, BinHardwareConfig] = Field(default_factory=dict)
+
+    def model_post_init(self, __context: Any) -> None:
+        """Ensure bins are populated with .env hardware connections if not explicitly provided."""
+        if not self.bins:
+            try:
+                from app.core.config import get_settings
+                settings = get_settings()
+                hw = settings.hardware
+
+                self.pca9685_address = hw.pca9685_address
+                self.pca9685_bus = hw.pca9685_i2c_bus
+                self.pwm_frequency = hw.servo_pwm_hz
+                self.servo_max_open_seconds = hw.servo_hold_s
+
+                mapping = [
+                    ("food_waste", "organic", hw.servo_channel_1, hw.ultrasonic_trig_1, hw.ultrasonic_echo_1),
+                    ("recyclable", "bio", hw.servo_channel_2, hw.ultrasonic_trig_2, hw.ultrasonic_echo_2),
+                    ("non_recyclable", "non_bio", hw.servo_channel_3, hw.ultrasonic_trig_3, hw.ultrasonic_echo_3),
+                ]
+
+                for cat, alias, chan, trig, echo in mapping:
+                    s_obj = ServoConfig(
+                        channel=chan,
+                        open_angle=hw.servo_open_deg,
+                        close_angle=hw.servo_close_deg,
+                        max_open_duration=hw.servo_hold_s,
+                    )
+                    u_obj = UltrasonicConfig(
+                        trigger_pin=trig,
+                        echo_pin=echo,
+                    )
+                    bin_hw = BinHardwareConfig(servo=s_obj, ultrasonic=u_obj)
+                    self.bins[cat] = bin_hw
+                    self.bins[alias] = bin_hw
+            except Exception:
+                pass
+
+    @classmethod
+    def from_settings(cls, settings: Optional[Any] = None) -> HardwareConfig:
+        """Create HardwareConfig initialized directly from .env HardwareSettings."""
+        if settings is None:
+            from app.core.config import get_settings
+            settings = get_settings()
+        hw = settings.hardware
+
+        cfg = cls(
+            pca9685_address=hw.pca9685_address,
+            pca9685_bus=hw.pca9685_i2c_bus,
+            pwm_frequency=hw.servo_pwm_hz,
+            servo_max_open_seconds=hw.servo_hold_s,
+        )
+
+        mapping = [
+            ("food_waste", "organic", hw.servo_channel_1, hw.ultrasonic_trig_1, hw.ultrasonic_echo_1),
+            ("recyclable", "bio", hw.servo_channel_2, hw.ultrasonic_trig_2, hw.ultrasonic_echo_2),
+            ("non_recyclable", "non_bio", hw.servo_channel_3, hw.ultrasonic_trig_3, hw.ultrasonic_echo_3),
+        ]
+
+        for cat, alias, chan, trig, echo in mapping:
+            s_obj = ServoConfig(
+                channel=chan,
+                open_angle=hw.servo_open_deg,
+                close_angle=hw.servo_close_deg,
+                max_open_duration=hw.servo_hold_s,
+            )
+            u_obj = UltrasonicConfig(
+                trigger_pin=trig,
+                echo_pin=echo,
+            )
+            bin_hw = BinHardwareConfig(servo=s_obj, ultrasonic=u_obj)
+            cfg.bins[cat] = bin_hw
+            cfg.bins[alias] = bin_hw
+
+        return cfg
 
     @classmethod
     def load_from_yaml(cls, yaml_path: Optional[Path | str] = None) -> HardwareConfig:

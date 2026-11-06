@@ -7,19 +7,25 @@ import { SystemState } from '../types';
 
 function getCategoryBadgeClass(category?: string | null) {
   switch (category) {
-    case 'organic': return styles.badgeOrganic;
-    case 'bio': return styles.badgeBio;
-    case 'non_bio': return styles.badgeNonBio;
-    default: return styles.badgeNonBio;
+    case 'food_waste':
+    case 'organic': return styles.badgeFoodWaste;
+    case 'recyclable':
+    case 'bio': return styles.badgeRecyclable;
+    case 'non_recyclable':
+    case 'non_bio': return styles.badgeNonRecyclable;
+    default: return styles.badgeNonRecyclable;
   }
 }
 
 function formatCategory(category?: string | null) {
   if (!category) return 'Manual Review';
   switch (category) {
-    case 'organic': return 'Organic';
-    case 'bio': return 'Bio';
-    case 'non_bio': return 'Non-Bio';
+    case 'food_waste':
+    case 'organic': return 'Food Waste';
+    case 'recyclable':
+    case 'bio': return 'Recyclable';
+    case 'non_recyclable':
+    case 'non_bio': return 'Non-Recyclable';
     default: return category;
   }
 }
@@ -62,14 +68,14 @@ export default function DetectedWastePanel() {
         </div>
       )}
 
-      {result ? (
+      {result || state.frozenImageUrl ? (
         <div className={styles.card}>
-          {/* Thumbnail */}
+          {/* Thumbnail: directly shows captured frame immediately */}
           <div className={styles.thumbnail}>
-            {result.imageUrl || state.frozenImageUrl ? (
+            {state.frozenImageUrl || result?.imageUrl ? (
               <img
-                src={result.imageUrl || state.frozenImageUrl!}
-                alt={result.wasteName}
+                src={state.frozenImageUrl || result?.imageUrl!}
+                alt={result?.wasteName || 'Captured Waste Item'}
                 className={styles.thumbnailImg}
               />
             ) : (
@@ -84,16 +90,26 @@ export default function DetectedWastePanel() {
           </div>
 
           {/* Waste name */}
-          <div className={styles.wasteName}>{result.wasteName}</div>
+          <div className={styles.wasteName}>
+            {result?.wasteName || (state.systemState === SystemState.Classifying ? 'Analyzing Waste...' : 'Item Captured')}
+          </div>
 
-          {/* Category + confidence */}
+          {/* Category + confidence / Analyzing status */}
           <div className={styles.meta}>
-            <span className={`${styles.categoryBadge} ${getCategoryBadgeClass(result.category)}`}>
-              {formatCategory(result.category)}
-            </span>
-            <span className={styles.confidence}>
-              Confidence {Math.round(result.confidence <= 1 ? result.confidence * 100 : result.confidence)}%
-            </span>
+            {result ? (
+              <>
+                <span className={`${styles.categoryBadge} ${getCategoryBadgeClass(result.category)}`}>
+                  {formatCategory(result.category)}
+                </span>
+                <span className={styles.confidence}>
+                  Confidence {Math.round(result.confidence <= 1 ? result.confidence * 100 : result.confidence)}%
+                </span>
+              </>
+            ) : (
+              <span className={styles.categoryBadge} style={{ background: '#f3e8ff', color: '#7c3aed' }}>
+                AI Identifying...
+              </span>
+            )}
           </div>
         </div>
       ) : (

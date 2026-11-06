@@ -83,9 +83,12 @@
   text-transform: capitalize;
 }
 
-.badgeOrganic  { background: var(--color-organic-bg); color: #15803d; }
-.badgeBio      { background: var(--color-bio-bg);     color: #6d28d9; }
-.badgeNonBio   { background: var(--color-non-bio-bg); color: #1d4ed8; }
+.badgeFoodWaste,
+.badgeOrganic        { background: var(--color-food-waste-bg);     color: #15803d; }
+.badgeRecyclable,
+.badgeBio            { background: var(--color-recyclable-bg);     color: #6d28d9; }
+.badgeNonRecyclable,
+.badgeNonBio         { background: var(--color-non-recyclable-bg); color: #1d4ed8; }
 
 .confidence {
   font-size: var(--font-size-sm);

@@ -58,8 +58,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     app.state.validation_report = validation_report
     logger.info("Hardware pre-flight check PASSED.")
 
-    # 2. Hardware config
-    hw_config = HardwareConfig()
+    # 2. Hardware config loaded directly from .env connections
+    hw_config = HardwareConfig.from_settings(settings)
 
     # 3. Instantiate services
     camera_svc = create_camera_service(
@@ -163,6 +163,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Start non-blocking sensor background polling & orchestrator
     ultrasonic_svc.start_background_polling()
+    weight_svc.start_background_polling()
     await sorting_svc.start()
 
     logger.info("Sortyx 2.0 services successfully initialized.")
@@ -172,6 +173,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     # Shutdown (Safely returns servos to 0°, stops camera, stops sensor polling, releases GPIO)
     logger.info("Shutting down Sortyx 2.0 services...")
     ultrasonic_svc.stop_background_polling()
+    weight_svc.stop_background_polling()
     await sorting_svc.stop()
     await servo_svc.close_all_bins()
     camera_svc.stop()

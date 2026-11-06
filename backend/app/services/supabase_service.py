@@ -119,11 +119,11 @@ class SupabaseService:
     def _resolve_classification_title(category: Optional[WasteCategory], is_hazardous: bool = False) -> str:
         if is_hazardous:
             return "Hazardous"
-        if category == WasteCategory.ORGANIC:
-            return "Organic"
-        if category == WasteCategory.BIO:
+        if category in (WasteCategory.FOOD_WASTE, WasteCategory.ORGANIC):
+            return "Food Waste"
+        if category in (WasteCategory.RECYCLABLE, WasteCategory.BIO):
             return "Recyclable"
-        if category == WasteCategory.NON_BIO:
+        if category in (WasteCategory.NON_RECYCLABLE, WasteCategory.NON_BIO):
             return "Non-Recyclable"
         return "Unknown"
 
@@ -396,12 +396,15 @@ class SupabaseService:
                     for row in res.data:
                         stats.total_items += 1
                         cls_name = str(row.get("classification") or "").lower()
-                        if "organic" in cls_name:
+                        if "food" in cls_name or "organic" in cls_name:
+                            stats.food_waste_count += 1
                             stats.organic_count += 1
-                        elif "recyclable" in cls_name and "non" not in cls_name:
-                            stats.bio_count += 1
                         elif "non" in cls_name:
+                            stats.non_recyclable_count += 1
                             stats.non_bio_count += 1
+                        elif "recyclable" in cls_name or "bio" in cls_name:
+                            stats.recyclable_count += 1
+                            stats.bio_count += 1
             except Exception as exc:
                 logger.debug("Supabase stats query deferred: %s. Falling back to offline counts.", exc)
 
@@ -414,13 +417,16 @@ class SupabaseService:
                         dt = datetime.fromisoformat(created_str)
                         if start_utc <= dt < end_utc:
                             stats.total_items += 1
-                            cat = ev.get("category")
-                            if cat == "organic":
+                            cat = str(ev.get("category") or "").lower()
+                            if "food" in cat or "organic" in cat:
+                                stats.food_waste_count += 1
                                 stats.organic_count += 1
-                            elif cat == "bio":
-                                stats.bio_count += 1
-                            elif cat == "non_bio":
+                            elif "non" in cat:
+                                stats.non_recyclable_count += 1
                                 stats.non_bio_count += 1
+                            elif "recyclable" in cat or cat == "bio":
+                                stats.recyclable_count += 1
+                                stats.bio_count += 1
                     except Exception:
                         pass
 
@@ -428,30 +434,61 @@ class SupabaseService:
 
     async def get_bin_statuses(self) -> List[Dict[str, Any]]:
         """Fetch current fill and sensor status for the three bins."""
-        if not self.is_connected:
-            return [
-                {"id": "organic", "category": "organic", "displayName": "Organic", "fillPercentage": 0, "sensorStatus": "not_configured"},
-                {"id": "bio", "category": "bio", "displayName": "Bio", "fillPercentage": 0, "sensorStatus": "not_configured"},
-                {"id": "non_bio", "category": "non_bio", "displayName": "Non-Bio", "fillPercentage": 0, "sensorStatus": "not_configured"},
-            ]
+        fill = 0.0
+        health = "not_configured"
 
-        try:
-            res = self._client.table("bins").select("id, device_id, latest_fill_level, sensor_health").execute()
-            if res.data:
-                fill = float(res.data[0].get("latest_fill_level") or 0.0)
-                health = str(res.data[0].get("sensor_health") or "online")
-                return [
-                    {"id": "organic", "category": "organic", "displayName": "Organic", "fillPercentage": fill, "sensorStatus": health},
-                    {"id": "bio", "category": "bio", "displayName": "Bio", "fillPercentage": fill, "sensorStatus": health},
-                    {"id": "non_bio", "category": "non_bio", "displayName": "Non-Bio", "fillPercentage": fill, "sensorStatus": health},
-                ]
-        except Exception as exc:
-            logger.debug("Failed to fetch bin statuses from Supabase: %s", exc)
+        if self.is_connected:
+            try:
+                res = self._client.table("bins").select("id, device_id, latest_fill_level, sensor_health").execute()
+                if res.data:
+                    fill = float(res.data[0].get("latest_fill_level") or 0.0)
+                    health = str(res.data[0].get("sensor_health") or "online")
+            except Exception as exc:
+                logger.debug("Failed to fetch bin statuses from Supabase: %s", exc)
 
         return [
-            {"id": "organic", "category": "organic", "displayName": "Organic", "fillPercentage": 0, "sensorStatus": "not_configured"},
-            {"id": "bio", "category": "bio", "displayName": "Bio", "fillPercentage": 0, "sensorStatus": "not_configured"},
-            {"id": "non_bio", "category": "non_bio", "displayName": "Non-Bio", "fillPercentage": 0, "sensorStatus": "not_configured"},
+            {
+                "id": "food_waste",
+                "binNumber": 1,
+                "category": "food_waste",
+                "displayName": "Food Waste",
+                "title": "Bin 1 – Food Waste",
+                "fillPercentage": fill,
+                "sensorStatus": health,
+                "weightKg": None,
+                "weightDisplay": "Not Calibrated",
+                "isCalibrated": False,
+                "loadCellConnected": False,
+                "loadCellStatus": "Load Cell Disconnected",
+            },
+            {
+                "id": "recyclable",
+                "binNumber": 2,
+                "category": "recyclable",
+                "displayName": "Recyclable",
+                "title": "Bin 2 – Recyclable",
+                "fillPercentage": fill,
+                "sensorStatus": health,
+                "weightKg": None,
+                "weightDisplay": "Not Calibrated",
+                "isCalibrated": False,
+                "loadCellConnected": False,
+                "loadCellStatus": "Load Cell Disconnected",
+            },
+            {
+                "id": "non_recyclable",
+                "binNumber": 3,
+                "category": "non_recyclable",
+                "displayName": "Non-Recyclable",
+                "title": "Bin 3 – Non-Recyclable",
+                "fillPercentage": fill,
+                "sensorStatus": health,
+                "weightKg": None,
+                "weightDisplay": "Not Calibrated",
+                "isCalibrated": False,
+                "loadCellConnected": False,
+                "loadCellStatus": "Load Cell Disconnected",
+            },
         ]
 
     async def flush_offline_queue(self) -> int:

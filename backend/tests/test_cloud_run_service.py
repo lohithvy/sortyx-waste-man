@@ -118,7 +118,7 @@ class TestCloudRunRequestFormat:
 # ===========================================================================
 
 class TestCloudRunResponseParsing:
-    def test_food_waste_maps_to_organic(self):
+    def test_food_waste_maps_to_food_waste(self):
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
@@ -131,13 +131,13 @@ class TestCloudRunResponseParsing:
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            assert r.category == "organic"
+            assert r.category == "food_waste"
             assert r.waste_name == "Banana Peel"
             assert r.confidence == 0.96
             assert r.is_hazardous is False
             assert r.requires_manual_review is False
 
-    def test_recyclable_paper_cardboard_maps_to_bio(self):
+    def test_recyclable_paper_cardboard_maps_to_recyclable(self):
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
@@ -150,12 +150,12 @@ class TestCloudRunResponseParsing:
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            assert r.category == "bio"
+            assert r.category == "recyclable"
             assert r.waste_name == "Cardboard Box"
             assert r.confidence == 0.93
             assert r.requires_manual_review is False
 
-    def test_recyclable_plastic_bottle_maps_to_non_bio(self):
+    def test_recyclable_plastic_bottle_maps_to_recyclable(self):
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
@@ -168,12 +168,12 @@ class TestCloudRunResponseParsing:
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            assert r.category == "non_bio"
+            assert r.category == "recyclable"
             assert r.waste_name == "PET Plastic Bottle"
             assert r.confidence == 0.97
             assert r.requires_manual_review is False
 
-    def test_recyclable_metal_can_maps_to_non_bio(self):
+    def test_recyclable_metal_can_maps_to_recyclable(self):
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
@@ -185,11 +185,11 @@ class TestCloudRunResponseParsing:
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            assert r.category == "non_bio"
+            assert r.category == "recyclable"
             assert r.waste_name == "Aluminium Soda Can"
             assert r.requires_manual_review is False
 
-    def test_non_recyclable_plastic_wrapper_maps_to_non_bio(self):
+    def test_non_recyclable_plastic_wrapper_maps_to_non_recyclable(self):
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
@@ -201,12 +201,12 @@ class TestCloudRunResponseParsing:
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            assert r.category == "non_bio"
+            assert r.category == "non_recyclable"
             assert r.waste_name == "Chips Packet / Plastic Wrapper"
             assert r.requires_manual_review is False
 
-    def test_non_recyclable_banana_peel_maps_to_organic(self):
-        """When /api/classify returns Non-Recyclable for banana peel, map to organic."""
+    def test_banana_peel_maps_to_food_waste(self):
+        """Banana peel must always map to food waste."""
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
@@ -219,12 +219,12 @@ class TestCloudRunResponseParsing:
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            assert r.category == "organic"
+            assert r.category == "food_waste"
             assert r.waste_name == "Banana peel organic food waste"
             assert r.confidence == 0.95
             assert r.requires_manual_review is False
 
-    def test_thermocol_maps_to_non_bio(self):
+    def test_thermocol_maps_to_non_recyclable(self):
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
@@ -235,10 +235,10 @@ class TestCloudRunResponseParsing:
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            assert r.category == "non_bio"
+            assert r.category == "non_recyclable"
             assert r.requires_manual_review is False
 
-    def test_wood_maps_to_bio(self):
+    def test_wood_maps_to_recyclable(self):
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
@@ -249,7 +249,24 @@ class TestCloudRunResponseParsing:
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            assert r.category == "bio"
+            assert r.category == "recyclable"
+            assert r.requires_manual_review is False
+
+    def test_electronic_device_classified_as_recyclable(self):
+        """Electronic devices and e-waste must be classified as RECYCLABLE."""
+        svc = _make_svc()
+        with patch.object(svc._session, "post") as mock_post:
+            mock_post.return_value = _mock_response(200, {
+                "classification": "RECYCLABLE",
+                "confidence": 0.95,
+                "item_name": "Old Smartphone / Mobile Phone",
+                "explanation": "Electronic device with recyclable circuit boards and components.",
+            })
+            r = svc._sync_classify(SAMPLE_JPEG)
+
+            assert r.category == "recyclable"
+            assert r.waste_name == "Old Smartphone / Mobile Phone"
+            assert r.is_hazardous is False
             assert r.requires_manual_review is False
 
     def test_confidence_is_genuine_and_not_hardcoded(self):
@@ -284,15 +301,15 @@ class TestCloudRunResponseParsing:
 # ===========================================================================
 
 class TestCloudRunSafetyAndManualReview:
-    def test_hazardous_battery_flagged_and_requires_manual_review(self):
+    def test_hazardous_chemical_flagged_and_requires_manual_review(self):
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
                 "classification": "NON-RECYCLABLE",
                 "confidence": 0.96,
-                "item_name": "Lithium-Ion Battery",
+                "item_name": "Toxic Chemical Bottle",
                 "bin_color": "Black",
-                "explanation": "Hazardous battery requiring specialized e-waste dropoff.",
+                "explanation": "Corrosive acid and poisonous chemical waste.",
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
@@ -344,18 +361,17 @@ class TestCloudRunSafetyAndManualReview:
             assert r.category is None
             assert r.requires_manual_review is True
 
-    def test_ambiguous_recyclable_without_material_routes_to_manual_review(self):
-        svc = _make_svc()
+    def test_low_confidence_unfamiliar_routes_to_manual_review(self):
+        svc = _make_svc(confidence_threshold=0.75)
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
                 "classification": "RECYCLABLE",
-                "confidence": 0.90,
-                "item_name": "General Recyclable Object",
+                "confidence": 0.60,
+                "item_name": "General Unclear Object",
                 "explanation": "Unspecified material",
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            # Neither bio nor non-bio keywords matched -> safe manual review
             assert r.category is None
             assert r.requires_manual_review is True
 
@@ -363,14 +379,13 @@ class TestCloudRunSafetyAndManualReview:
         svc = _make_svc()
         with patch.object(svc._session, "post") as mock_post:
             mock_post.return_value = _mock_response(200, {
-                "classification": "RECYCLABLE",
+                "classification": "UNKNOWN",
                 "confidence": 0.88,
                 "item_name": "Plastic-lined paper coffee cup",
                 "explanation": "Paper carton with internal plastic film lining",
             })
             r = svc._sync_classify(SAMPLE_JPEG)
 
-            # Contains both bio (paper) and non-bio (plastic) keywords -> ambiguous
             assert r.category is None
             assert r.requires_manual_review is True
 

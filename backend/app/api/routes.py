@@ -184,22 +184,58 @@ async def get_captured_frame(request: Request) -> Response:
     """Return the currently frozen in-memory JPEG frame."""
     sorting = getattr(request.app.state, "sorting_service", None)
     if sorting and sorting.frozen_frame_bytes:
-        return Response(content=sorting.frozen_frame_bytes, media_type="image/jpeg")
+        return Response(
+            content=sorting.frozen_frame_bytes,
+            media_type="image/jpeg",
+            headers={"Cache-Control": "no-cache, no-store, must-revalidate"},
+        )
     raise HTTPException(status_code=404, detail="No captured frame available")
 
 
 @router.get("/bins")
 async def get_bins(request: Request) -> List[Dict[str, Any]]:
-    """Return real-time fill level and sensor status for each bin."""
-    supabase = getattr(request.app.state, "supabase_service", None)
-    if supabase:
-        return await supabase.get_bin_statuses()
+    """Return real-time fill level, sensor status, and load-cell weight for each bin."""
+    weight_svc = getattr(request.app.state, "weight_service", None)
+    ultrasonic_svc = getattr(request.app.state, "ultrasonic_service", None)
 
-    return [
-        {"id": "organic", "category": "organic", "displayName": "Organic", "fillPercentage": 0, "sensorStatus": "not_configured"},
-        {"id": "bio", "category": "bio", "displayName": "Bio", "fillPercentage": 0, "sensorStatus": "not_configured"},
-        {"id": "non_bio", "category": "non_bio", "displayName": "Non-Bio", "fillPercentage": 0, "sensorStatus": "not_configured"},
+    bins_data = []
+    bins_info = [
+        (BinId.FOOD_WASTE, 1, "food_waste", "Food Waste", "Bin 1 – Food Waste"),
+        (BinId.RECYCLABLE, 2, "recyclable", "Recyclable", "Bin 2 – Recyclable"),
+        (BinId.NON_RECYCLABLE, 3, "non_recyclable", "Non-Recyclable", "Bin 3 – Non-Recyclable"),
     ]
+
+    for bin_id, num, cat, name, title in bins_info:
+        weight_summary = weight_svc.get_bin_weight_summary(bin_id) if weight_svc else {}
+        is_calibrated = weight_summary.get("is_calibrated", False)
+        weight_kg = weight_summary.get("weight_kg")
+        weight_display = weight_summary.get("weight_display", "Not Calibrated")
+        load_cell_status = weight_summary.get("load_cell_status", "Load Cell Disconnected")
+        load_cell_connected = weight_summary.get("load_cell_connected", False)
+
+        fill_pct = 0.0
+        sensor_status = "not_configured"
+        if ultrasonic_svc:
+            dist = ultrasonic_svc.read_distance(bin_id) if hasattr(ultrasonic_svc, "read_distance") else None
+            fill_pct = ultrasonic_svc.calculate_fill_percentage(bin_id, dist) if hasattr(ultrasonic_svc, "calculate_fill_percentage") else 0.0
+            sensor_status = ultrasonic_svc.sensor_statuses.get(bin_id.value, "not_configured")
+
+        bins_data.append({
+            "id": cat,
+            "binNumber": num,
+            "category": cat,
+            "displayName": name,
+            "title": title,
+            "weightKg": weight_kg,
+            "weightDisplay": weight_display,
+            "isCalibrated": is_calibrated,
+            "loadCellConnected": load_cell_connected,
+            "loadCellStatus": load_cell_status,
+            "fillPercentage": round(float(fill_pct), 1),
+            "sensorStatus": sensor_status.value if hasattr(sensor_status, "value") else str(sensor_status),
+        })
+
+    return bins_data
 
 
 @router.get("/stats/today", response_model=DailyStats)

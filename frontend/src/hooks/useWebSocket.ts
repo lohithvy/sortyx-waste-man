@@ -95,7 +95,8 @@ export function useWebSocket(dispatch: Dispatch<AppAction>) {
         }
 
         case 'bin_update':
-        case 'bin_status_update': {
+        case 'bin_status_update':
+        case 'weight_update': {
           const p = ((msg.payload || msg) as any) || {};
           const binKey = p.bin_id || p.id || p.category;
           if (binKey) {
@@ -103,10 +104,17 @@ export function useWebSocket(dispatch: Dispatch<AppAction>) {
               type: 'UPDATE_BIN',
               payload: {
                 id: binKey,
+                binNumber: p.bin_number ?? p.binNumber,
                 category: (p.category || binKey).toLowerCase().replace('-', '_'),
                 displayName: p.display_name || p.displayName || binKey,
+                title: p.title,
                 fillPercentage: Number(p.fill_percentage ?? p.fillPercentage ?? 0),
-                sensorStatus: p.sensor_status || p.sensorStatus || 'not_configured',
+                sensorStatus: p.sensor_status || p.sensorStatus || 'ok',
+                weightKg: p.weight_kg ?? p.weightKg ?? null,
+                weightDisplay: p.weight_display ?? p.weightDisplay,
+                isCalibrated: p.is_calibrated ?? p.isCalibrated,
+                loadCellConnected: p.load_cell_connected ?? p.loadCellConnected,
+                loadCellStatus: p.load_cell_status ?? p.loadCellStatus,
               },
             });
           }
@@ -149,6 +157,11 @@ export function useWebSocket(dispatch: Dispatch<AppAction>) {
           });
           break;
 
+        case 'sorting_success':
+        case 'sorting_completed':
+          dispatch({ type: 'TRIGGER_SORTING_SUCCESS' });
+          break;
+
         case 'quota_update': {
           const p = (msg.payload || msg) as any;
           dispatch({
@@ -179,13 +192,28 @@ export function useWebSocket(dispatch: Dispatch<AppAction>) {
 
         case 'daily_stats': {
           const p = ((msg.payload || msg) as any) || {};
+          const foodWaste = Number(
+            p.foodWaste ?? p.food_waste_count ?? p.food_waste ?? p.organic ?? p.organic_count ?? 0,
+          );
+          const recyclable = Number(
+            p.recyclable ?? p.recyclable_count ?? p.recyclable ?? p.bio ?? p.bio_count ?? 0,
+          );
+          const nonRecyclable = Number(
+            p.nonRecyclable ?? p.non_recyclable_count ?? p.non_recyclable ?? p.nonBio ?? p.non_bio_count ?? 0,
+          );
+          const total = Number(
+            p.totalItems ?? p.total_items ?? (foodWaste + recyclable + nonRecyclable),
+          );
           dispatch({
             type: 'SET_DAILY_STATS',
             payload: {
-              totalItems: Number(p.totalItems ?? p.total_items ?? 0),
-              organic: Number(p.organic ?? p.organic_count ?? 0),
-              bio: Number(p.bio ?? p.bio_count ?? 0),
-              nonBio: Number(p.nonBio ?? p.non_bio_count ?? 0),
+              totalItems: total,
+              foodWaste,
+              recyclable,
+              nonRecyclable,
+              organic: foodWaste,
+              bio: recyclable,
+              nonBio: nonRecyclable,
             },
           });
           break;

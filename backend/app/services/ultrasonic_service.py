@@ -57,16 +57,16 @@ class UltrasonicService:
 
         # Moving window of readings per bin
         self._history: Dict[BinId, List[float]] = {
-            BinId.BIO: [],
-            BinId.ORGANIC: [],
-            BinId.NON_BIO: [],
+            BinId.FOOD_WASTE: [],
+            BinId.RECYCLABLE: [],
+            BinId.NON_RECYCLABLE: [],
         }
 
         # Latest validated distance per bin
         self._latest_distances: Dict[BinId, Optional[float]] = {
-            BinId.BIO: None,
-            BinId.ORGANIC: None,
-            BinId.NON_BIO: None,
+            BinId.FOOD_WASTE: None,
+            BinId.RECYCLABLE: None,
+            BinId.NON_RECYCLABLE: None,
         }
 
         # Sensor status tracking
@@ -79,9 +79,9 @@ class UltrasonicService:
     def _sync_pins_from_settings(self, settings) -> None:
         """Ensure pin assignments match confirmed HardwareSettings."""
         pin_mappings = {
-            BinId.ORGANIC: (settings.hardware.ultrasonic_trig_1, settings.hardware.ultrasonic_echo_1),
-            BinId.BIO: (settings.hardware.ultrasonic_trig_2, settings.hardware.ultrasonic_echo_2),
-            BinId.NON_BIO: (settings.hardware.ultrasonic_trig_3, settings.hardware.ultrasonic_echo_3),
+            BinId.FOOD_WASTE: (settings.hardware.ultrasonic_trig_1, settings.hardware.ultrasonic_echo_1),
+            BinId.RECYCLABLE: (settings.hardware.ultrasonic_trig_2, settings.hardware.ultrasonic_echo_2),
+            BinId.NON_RECYCLABLE: (settings.hardware.ultrasonic_trig_3, settings.hardware.ultrasonic_echo_3),
         }
         for b, (trig, echo) in pin_mappings.items():
             key = b.value
@@ -94,6 +94,16 @@ class UltrasonicService:
 
     def _get_bin_config(self, bin_id: BinId) -> UltrasonicConfig:
         key = bin_id.value
+        if key in self.config.bins and self.config.bins[key].ultrasonic.is_configured:
+            return self.config.bins[key].ultrasonic
+        alias_map = {
+            BinId.FOOD_WASTE: "organic",
+            BinId.RECYCLABLE: "bio",
+            BinId.NON_RECYCLABLE: "non_bio",
+        }
+        alias = alias_map.get(bin_id)
+        if alias and alias in self.config.bins and self.config.bins[alias].ultrasonic.is_configured:
+            return self.config.bins[alias].ultrasonic
         if key in self.config.bins:
             return self.config.bins[key].ultrasonic
         return UltrasonicConfig()
@@ -296,5 +306,9 @@ class UltrasonicService:
 
     @property
     def sensor_statuses(self) -> Dict[str, SensorStatus]:
-        """Current status dictionary for all bins."""
-        return {b.value: self._sensor_statuses.get(b, SensorStatus.NOT_CONFIGURED) for b in BinId}
+        """Current status dictionary for all bins, including backward-compatible aliases."""
+        statuses = {b.value: self._sensor_statuses.get(b, SensorStatus.NOT_CONFIGURED) for b in BinId}
+        statuses["organic"] = statuses.get("food_waste", SensorStatus.NOT_CONFIGURED)
+        statuses["bio"] = statuses.get("recyclable", SensorStatus.NOT_CONFIGURED)
+        statuses["non_bio"] = statuses.get("non_recyclable", SensorStatus.NOT_CONFIGURED)
+        return statuses

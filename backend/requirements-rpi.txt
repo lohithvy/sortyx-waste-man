@@ -1,0 +1,30 @@
+# Sortyx 2.0 — Raspberry Pi 5 Hardware Dependencies
+# Install on Raspberry Pi: pip install -r requirements-rpi.txt
+
+# Core dependencies
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+opencv-python-headless==4.10.0.84
+mediapipe==0.10.18
+requests>=2.31.0
+supabase==2.33.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-dotenv==1.0.1
+pyyaml==6.0.2
+websockets==14.1
+httpx==0.28.1
+python-multipart==0.0.20
+pytest==8.3.4
+pytest-asyncio==0.25.0
+
+# Raspberry Pi 5 Hardware Drivers
+# 1. GPIO bit-banging & HC-SR04 / HX711 (RP1 compatible)
+rpi-lgpio>=0.6
+gpiod>=2.1.0
+
+# 2. I2C Bus & PCA9685 16-channel PWM servo controller
+smbus2>=0.4.3
+adafruit-circuitpython-servokit>=1.3.16
+adafruit-circuitpython-pca9685>=3.4.15
+

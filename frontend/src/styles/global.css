@@ -17,6 +17,17 @@
   --color-primary-bg: #ede9fe;
 
   /* Category colors */
+  --color-food-waste: #22c55e;
+  --color-food-waste-light: #bbf7d0;
+  --color-food-waste-bg: #f0fdf4;
+  --color-recyclable: #8b5cf6;
+  --color-recyclable-light: #c4b5fd;
+  --color-recyclable-bg: #f5f3ff;
+  --color-non-recyclable: #3b82f6;
+  --color-non-recyclable-light: #93c5fd;
+  --color-non-recyclable-bg: #eff6ff;
+
+  /* Aliases */
   --color-organic: #22c55e;
   --color-organic-light: #bbf7d0;
   --color-organic-bg: #f0fdf4;

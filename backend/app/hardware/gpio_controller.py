@@ -50,7 +50,7 @@ class GPIOController:
             self._init_gpio()
 
     def _init_gpio(self) -> None:
-        """Attempt to initialize RPi.GPIO in BCM mode."""
+        """Attempt to initialize GPIO (RPi.GPIO or rpi-lgpio for Raspberry Pi 5) in BCM mode."""
         try:
             import RPi.GPIO as GPIO  # type: ignore
 
@@ -58,12 +58,15 @@ class GPIOController:
             self._gpio.setmode(self._gpio.BCM)
             self._gpio.setwarnings(False)
             self._initialized = True
-            logger.info("RPi.GPIO initialized successfully in BCM mode.")
+            logger.info("GPIO hardware controller initialized successfully in BCM mode.")
         except ImportError:
-            logger.warning("RPi.GPIO not available (running on non-Pi OS). Operating in SIMULATION mode.")
+            logger.warning("GPIO library not available (running on non-Pi OS). Operating in SIMULATION mode.")
+            self.simulation_mode = True
+        except RuntimeError as r_err:
+            logger.error("RPi.GPIO failed on Raspberry Pi 5 (%s). Install 'rpi-lgpio' (pip install rpi-lgpio).", r_err)
             self.simulation_mode = True
         except Exception as exc:
-            logger.error("Failed to initialize RPi.GPIO: %s", exc)
+            logger.error("Failed to initialize GPIO: %s", exc)
             self.simulation_mode = True
 
     def setup_pins(self, trigger_pin: int, echo_pin: int) -> bool:

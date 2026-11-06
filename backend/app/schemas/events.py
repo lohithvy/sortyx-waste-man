@@ -89,6 +89,10 @@ class DailyStats(BaseModel):
     """Summary statistics for the current day (IST timezone)."""
 
     total_items: int = 0
+    food_waste_count: int = 0
+    recyclable_count: int = 0
+    non_recyclable_count: int = 0
+    # Backward-compatible counts
     bio_count: int = 0
     organic_count: int = 0
     non_bio_count: int = 0
@@ -104,18 +108,34 @@ class DailyStats(BaseModel):
 
     @computed_field
     @property
+    def foodWaste(self) -> int:
+        return self.food_waste_count or self.organic_count
+
+    @computed_field
+    @property
+    def recyclable(self) -> int:
+        return self.recyclable_count or self.bio_count
+
+    @computed_field
+    @property
+    def nonRecyclable(self) -> int:
+        return self.non_recyclable_count or self.non_bio_count
+
+    # Backward-compatible camelCase aliases
+    @computed_field
+    @property
     def organic(self) -> int:
-        return self.organic_count
+        return self.foodWaste
 
     @computed_field
     @property
     def bio(self) -> int:
-        return self.bio_count
+        return self.recyclable
 
     @computed_field
     @property
     def nonBio(self) -> int:
-        return self.non_bio_count
+        return self.nonRecyclable
 
 
 class BinStatus(BaseModel):

@@ -148,7 +148,7 @@ async def test_e2e_organic_sorting_lifecycle(integration_harness) -> None:
         assert event_id in supabase._offline_events_queue
         db_ev = supabase._offline_events_queue[event_id]
         assert db_ev["sorting_status"] == SortingStatus.COMPLETED.value
-        assert db_ev["category"] == "organic"
+        assert db_ev["category"] in ("food_waste", "organic")
 
         # 8. Check stats incremented
         stats = await supabase.get_today_stats()

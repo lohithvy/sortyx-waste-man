@@ -50,7 +50,7 @@ def state_machine() -> SortingStateMachine:
 def sample_organic_response() -> GeminiClassificationResponse:
     return GeminiClassificationResponse(
         waste_name="Banana Peel",
-        category="organic",
+        category="food_waste",
         confidence=0.96,
         reason="Fresh fruit peel decomposes quickly into compost.",
         is_hazardous=False,
@@ -62,7 +62,7 @@ def sample_organic_response() -> GeminiClassificationResponse:
 def sample_bio_response() -> GeminiClassificationResponse:
     return GeminiClassificationResponse(
         waste_name="Cardboard Box",
-        category="bio",
+        category="recyclable",
         confidence=0.91,
         reason="Untreated cellulose fibre decomposes naturally.",
         is_hazardous=False,
@@ -73,10 +73,10 @@ def sample_bio_response() -> GeminiClassificationResponse:
 @pytest.fixture
 def sample_non_bio_response() -> GeminiClassificationResponse:
     return GeminiClassificationResponse(
-        waste_name="Plastic Water Bottle",
-        category="non_bio",
+        waste_name="Chips Packet Wrapper",
+        category="non_recyclable",
         confidence=0.98,
-        reason="Polyethylene terephthalate does not decompose naturally.",
+        reason="Polyethylene film does not decompose naturally.",
         is_hazardous=False,
         requires_manual_review=False,
     )
@@ -85,8 +85,8 @@ def sample_non_bio_response() -> GeminiClassificationResponse:
 @pytest.fixture
 def sample_hazardous_response() -> GeminiClassificationResponse:
     return GeminiClassificationResponse(
-        waste_name="Lithium-Ion Battery",
-        category="non_bio",
+        waste_name="Toxic Pesticide Chemical",
+        category="hazardous",
         confidence=0.95,
         reason="Hazardous electronic battery requiring special e-waste disposal.",
         is_hazardous=True,

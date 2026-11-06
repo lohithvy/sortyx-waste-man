@@ -17,7 +17,7 @@ export default function BinStatusPanel() {
         <span className={styles.panelTitle}>Bin Status</span>
       </div>
 
-      {state.binStatuses.map((bin) => (
+      {state.binStatuses.slice(0, 3).map((bin) => (
         <BinStatusCard key={bin.id} bin={bin} />
       ))}
     </div>

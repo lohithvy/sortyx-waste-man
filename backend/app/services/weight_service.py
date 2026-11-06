@@ -2,13 +2,13 @@
 Sortyx 2.0 — Weight Monitoring & HX711 Load Cell Service.
 
 Coordinates three independent HX711 24-bit load cell amplifiers:
-  - Bin 1 (Organic): DT=GPIO 5, SCK=GPIO 11
-  - Bin 2 (Bio):     DT=GPIO 13, SCK=GPIO 19
-  - Bin 3 (Non-Bio): DT=GPIO 26, SCK=GPIO 21
+  - Bin 1 (Food Waste):    DT=GPIO 5,  SCK=GPIO 11
+  - Bin 2 (Recyclable):    DT=GPIO 13, SCK=GPIO 19
+  - Bin 3 (Non-Recyclable):DT=GPIO 26, SCK=GPIO 21
 
 Key architectural requirements:
 1. Handle uncalibrated offsets (Tare and Scale default to None/empty).
-2. Report weight as unavailable (None) with status UNCALIBRATED when uncalibrated or in simulation.
+2. Report weight as unavailable (None) with display "Not Calibrated" until calibrated.
 3. NEVER report fabricated weights.
 4. Provide independent per-bin tare() and calibrate(known_weight_g) functions.
 5. Strict isolation: failure or timeout on one bin's load cell never impacts the others.
@@ -53,41 +53,44 @@ class WeightService:
 
         # Initialize independent controllers for each bin
         self._controllers: Dict[BinId, HX711Controller] = {
-            BinId.ORGANIC: HX711Controller(
+            BinId.FOOD_WASTE: HX711Controller(
                 dt_pin=settings.hardware.hx711_dt_1,
                 sck_pin=settings.hardware.hx711_sck_1,
                 tare_offset=settings.hardware.hx711_tare_1,
                 scale_factor=settings.hardware.hx711_scale_1,
                 simulation_mode=simulation_mode,
-                bin_name="organic",
+                bin_name="food_waste",
             ),
-            BinId.BIO: HX711Controller(
+            BinId.RECYCLABLE: HX711Controller(
                 dt_pin=settings.hardware.hx711_dt_2,
                 sck_pin=settings.hardware.hx711_sck_2,
                 tare_offset=settings.hardware.hx711_tare_2,
                 scale_factor=settings.hardware.hx711_scale_2,
                 simulation_mode=simulation_mode,
-                bin_name="bio",
+                bin_name="recyclable",
             ),
-            BinId.NON_BIO: HX711Controller(
+            BinId.NON_RECYCLABLE: HX711Controller(
                 dt_pin=settings.hardware.hx711_dt_3,
                 sck_pin=settings.hardware.hx711_sck_3,
                 tare_offset=settings.hardware.hx711_tare_3,
                 scale_factor=settings.hardware.hx711_scale_3,
                 simulation_mode=simulation_mode,
-                bin_name="non_bio",
+                bin_name="non_recyclable",
             ),
         }
 
         # Cached weights per bin
         self._latest_weights: Dict[BinId, Optional[float]] = {
-            BinId.BIO: None,
-            BinId.ORGANIC: None,
-            BinId.NON_BIO: None,
+            BinId.FOOD_WASTE: None,
+            BinId.RECYCLABLE: None,
+            BinId.NON_RECYCLABLE: None,
         }
 
         # Per-bin lock lazily initialized on active event loop
         self._locks: Dict[BinId, asyncio.Lock] = {}
+        self._running: bool = False
+        self._bg_task: Optional[asyncio.Task] = None
+        self.read_interval_s: float = 2.0
 
     def _get_lock(self, bin_id: BinId) -> asyncio.Lock:
         """Lazily initialize asyncio.Lock on current event loop."""
@@ -180,11 +183,44 @@ class WeightService:
         """Get structured status and weight report for a specific bin."""
         ctrl = self._controllers.get(bin_id)
         status = self.get_sensor_status(bin_id)
+        is_cal = ctrl.is_calibrated if ctrl else False
+        val_g = self._latest_weights.get(bin_id)
+        weight_kg = round(val_g / 1000.0, 2) if (val_g is not None and is_cal) else None
+
+        if not is_cal:
+            weight_display = "Not Calibrated"
+        elif weight_kg is not None:
+            weight_display = f"{weight_kg:.2f} kg"
+        else:
+            weight_display = "Not Calibrated"
+
+        # Verify physical load cell connection:
+        # A load cell is physically connected ONLY when:
+        # 1. Hardware simulation mode is OFF.
+        # 2. RPi GPIO controller is initialized.
+        # 3. DT pin responds (is_ready / not floating).
+        is_connected = False
+        if not self.simulation_mode and ctrl and getattr(ctrl, "_initialized", False) and getattr(ctrl, "_gpio", None) is not None:
+            try:
+                is_connected = bool(ctrl.is_ready())
+            except Exception:
+                is_connected = False
+
+        load_cell_status = "Load Cell Connected" if is_connected else "Load Cell Disconnected"
+
         return {
             "bin": bin_id.value,
-            "weight_g": self._latest_weights.get(bin_id),
+            "bin_number": bin_id.bin_number,
+            "category": bin_id.value,
+            "displayName": bin_id.display_name,
+            "title": bin_id.full_title,
+            "weight_g": val_g if is_cal else None,
+            "weight_kg": weight_kg,
+            "weight_display": weight_display,
+            "is_calibrated": is_cal,
+            "load_cell_connected": is_connected,
+            "load_cell_status": load_cell_status,
             "status": status.value,
-            "is_calibrated": ctrl.is_calibrated if ctrl else False,
             "tare_offset": ctrl.tare_offset if ctrl else None,
             "scale_factor": ctrl.scale_factor if ctrl else None,
             "dt_pin": ctrl.dt_pin if ctrl else None,
@@ -192,9 +228,67 @@ class WeightService:
         }
 
     def get_all_weights_summary(self) -> Dict[str, Dict[str, Any]]:
-        """Return comprehensive weight sensor status across all three bins."""
-        return {
+        """Return comprehensive weight sensor status across all three bins, including backward-compatible aliases."""
+        res = {
             b.value: self.get_bin_weight_summary(b)
-            for b in [BinId.ORGANIC, BinId.BIO, BinId.NON_BIO]
+            for b in [BinId.FOOD_WASTE, BinId.RECYCLABLE, BinId.NON_RECYCLABLE]
         }
+        res["organic"] = res.get("food_waste", {})
+        res["bio"] = res.get("recyclable", {})
+        res["non_bio"] = res.get("non_recyclable", {})
+        return res
+
+    async def _poll_loop(self) -> None:
+        """Background asynchronous polling worker reading each load cell and syncing UI."""
+        logger.info("HX711 load cell background polling worker started (interval=%.1fs).", self.read_interval_s)
+        from app.api.websocket import ws_manager
+
+        while self._running:
+            try:
+                for b in (BinId.FOOD_WASTE, BinId.RECYCLABLE, BinId.NON_RECYCLABLE):
+                    if not self._running:
+                        break
+                    await self.read_weight_async(b)
+                    summary = self.get_bin_weight_summary(b)
+                    try:
+                        await ws_manager.broadcast_json({
+                            "type": "weight_update",
+                            "payload": {
+                                "bin_id": b.value,
+                                "bin_number": b.bin_number,
+                                "category": b.value,
+                                "display_name": b.display_name,
+                                "title": b.full_title,
+                                "weight_kg": summary["weight_kg"],
+                                "weight_display": summary["weight_display"],
+                                "is_calibrated": summary["is_calibrated"],
+                                "load_cell_connected": summary["load_cell_connected"],
+                                "load_cell_status": summary["load_cell_status"],
+                            },
+                        })
+                    except Exception:
+                        pass
+            except asyncio.CancelledError:
+                break
+            except Exception as exc:
+                logger.debug("HX711 polling loop cycle: %s", exc)
+
+            try:
+                await asyncio.sleep(self.read_interval_s)
+            except asyncio.CancelledError:
+                break
+
+    def start_background_polling(self) -> None:
+        """Start non-blocking periodic background load cell polling."""
+        if not self._running:
+            self._running = True
+            self._bg_task = asyncio.create_task(self._poll_loop())
+
+    def stop_background_polling(self) -> None:
+        """Stop background load cell polling worker cleanly."""
+        self._running = False
+        if self._bg_task and not self._bg_task.done():
+            self._bg_task.cancel()
+            self._bg_task = None
+        logger.info("HX711 load cell background polling stopped.")
 

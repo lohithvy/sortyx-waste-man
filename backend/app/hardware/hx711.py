@@ -62,16 +62,19 @@ class HX711Controller:
             self._gpio.output(self.sck_pin, False)
             self._initialized = True
             logger.info(
-                "HX711 initialized for bin '%s' (DT=%d, SCK=%d)",
+                "HX711 initialized for bin '%s' (DT=%d, SCK=%d) on Raspberry Pi",
                 self.bin_name,
                 self.dt_pin,
                 self.sck_pin,
             )
         except ImportError:
             logger.warning(
-                "RPi.GPIO not available. HX711 for bin '%s' operating in SIMULATION mode.",
+                "GPIO library not available. HX711 for bin '%s' operating in SIMULATION mode.",
                 self.bin_name,
             )
+            self.simulation_mode = True
+        except RuntimeError as r_err:
+            logger.error("RPi.GPIO failed on Raspberry Pi 5 (%s). Install 'rpi-lgpio' (pip install rpi-lgpio).", r_err)
             self.simulation_mode = True
         except Exception as exc:
             logger.error(

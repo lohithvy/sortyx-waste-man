@@ -41,38 +41,48 @@ DEFAULT_CLOUD_RUN_ENDPOINT = (
     "https://sortyx-classify-5bwsw4lr6q-uc.a.run.app/api/classify"
 )
 
-# 1. Hazardous waste keywords (highest priority safety rule)
+# 1. Truly hazardous chemical & biohazard waste keywords (highest priority safety rule)
 HAZARDOUS_KEYWORDS = frozenset({
-    "battery", "batteries", "lithium", "chemical", "poison", "toxic",
-    "syringe", "needle", "e-waste", "electronic", "circuit", "mercury",
+    "chemical", "poison", "toxic", "syringe", "needle", "mercury",
     "paint", "pesticide", "aerosol", "flammable", "corrosive", "acid",
+    "biohazard", "hazardous waste", "medical waste",
 })
 
-# 2. Organic food waste keywords
-ORGANIC_KEYWORDS = frozenset({
+# 2. Electronics & e-waste keywords (classified as RECYCLABLE per collection policy)
+ELECTRONICS_KEYWORDS = frozenset({
+    "phone", "mobile", "cellphone", "smartphone", "electronic", "electronics",
+    "e-waste", "ewaste", "cable", "charger", "laptop", "tablet", "circuit",
+    "remote", "calculator", "headphone", "earphone", "gadget", "keyboard",
+    "mouse", "pcb", "battery", "batteries", "wire", "adapter",
+})
+
+# 3. Food waste keywords (Bin 1 — Food Waste)
+FOOD_WASTE_KEYWORDS = frozenset({
     "food", "fruit", "fruits", "vegetable", "vegetables", "peel", "peels",
     "skin", "banana", "apple", "orange", "citrus", "core", "scraps", "scrap",
     "leftover", "leftovers", "cooked", "meal", "rice", "bread", "chapati",
     "curry", "meat", "fish", "chicken", "bone", "bones", "eggshell", "eggshells",
-    "egg", "tea", "coffee", "grounds", "organic", "compost", "compostable",
+    "egg", "tea", "coffee grounds", "organic", "compost", "compostable",
     "kitchen waste", "food waste", "banana peel", "fruit peel", "vegetable scrap",
+    "rotten", "dough",
 })
 
-# 3. Bio (biodegradable non-food) keywords
-BIO_KEYWORDS = frozenset({
+# 4. Recyclable keywords (Bin 2 — Recyclable)
+RECYCLABLE_KEYWORDS = frozenset({
     "paper", "cardboard", "carton", "newspaper", "magazine", "corrugated",
     "cellulose", "kraft", "box", "wood", "wooden", "leaves", "leaf",
     "plant", "twigs", "stick", "sawdust", "coconut shell", "bamboo",
+    "plastic", "pet", "hdpe", "pvc", "ldpe", "pp", "bottle", "container",
+    "jug", "jar", "metal", "can", "tin", "aluminium", "aluminum", "steel",
+    "glass", "tub", "tray", "foil", "wire", "pipe", "canister",
 })
 
-# 4. Non-Bio keywords (plastics, metals, glass, wrappers, thermocol)
-NON_BIO_KEYWORDS = frozenset({
-    "plastic", "pet", "hdpe", "pvc", "ldpe", "pp", "ps", "polyester",
-    "bottle", "container", "jug", "jar", "metal", "can", "tin", "aluminium",
-    "aluminum", "steel", "glass", "tub", "tray", "foil", "wire", "pipe",
-    "wrapper", "sachet", "packet", "chips", "crisps", "snack",
+# 5. Non-Recyclable keywords (Bin 3 — Non-Recyclable)
+NON_RECYCLABLE_KEYWORDS = frozenset({
+    "wrapper", "sachet", "packet", "chips", "crisps", "snack", "metallized",
     "thermocol", "styrofoam", "polystyrene", "rubber", "vinyl", "synthetic",
     "pouch", "straw", "cutlery", "film", "bag", "bubble wrap", "laminate",
+    "diaper", "sanitary", "tissue", "napkin", "ceramic", "porcelain",
 })
 
 
@@ -99,24 +109,28 @@ def map_cloud_run_classification(
 ) -> Tuple[Optional[str], bool, bool]:
     """Map Cloud Run classification response to Sortyx 2.0 categories.
 
-    Uses item_name and explanation to identify the actual material,
-    never relying on the recyclable label alone.
+    Categories:
+      - 'food_waste': Bin 1 (Food Waste) -> Servo 1
+      - 'recyclable': Bin 2 (Recyclable) -> Servo 2
+      - 'non_recyclable': Bin 3 (Non-Recyclable) -> Servo 3
 
-    Returns:
-        (category, is_hazardous, requires_manual_review)
-        category is one of: 'organic', 'bio', 'non_bio', or None.
+    Safety rules:
+      - Electronic devices and e-waste classify as RECYCLABLE.
+      - Truly hazardous / medical / chemical waste flags is_hazardous=True -> manual review.
+      - Low confidence (< threshold) or unknown objects route to manual review.
+      - Does not reject unfamiliar objects if Cloud Run provided high-confidence classification.
     """
     cls_clean = (classification or "").strip().upper()
     item_lower = (item_name or "").lower()
     exp_lower = (explanation or "").lower()
-    full_text = f"{item_lower} {exp_lower}"
+    full_text = f"{item_lower} {exp_lower} {cls_clean.lower()}"
 
-    # 1. Hazardous waste check (highest priority safety rule)
+    # 1. Hazardous chemical / medical safety check (highest priority safety rule)
     if _contains_any_keyword(full_text, HAZARDOUS_KEYWORDS):
-        logger.warning("Hazardous item detected in Cloud Run output: '%s'", item_name)
+        logger.warning("Hazardous chemical/medical item detected in Cloud Run output: '%s'", item_name)
         return None, True, True
 
-    # 2. Low confidence or unparseable check
+    # 2. Low confidence check
     if confidence < confidence_threshold:
         logger.info(
             "Confidence %.2f below threshold %.2f -> manual review",
@@ -125,48 +139,61 @@ def map_cloud_run_classification(
         )
         return None, False, True
 
+    # 3. Unidentified / Unknown check
     if (
         cls_clean in ("UNKNOWN", "OTHER", "UNIDENTIFIED", "")
         or "unknown" in item_lower
         or "could not parse" in exp_lower
+        or item_lower in ("unidentified object", "black image", "empty image")
     ):
         logger.info("Unidentified/Unknown item from Cloud Run -> manual review")
         return None, False, True
 
-    # 3. Detect material characteristics from item_name and explanation
-    is_organic = _contains_any_keyword(full_text, ORGANIC_KEYWORDS) or cls_clean in (
-        "FOOD WASTE",
-        "FOOD_WASTE",
-        "FOOD",
-        "ORGANIC",
+    # 4. Mandatory: Electronic devices, mobile phones, and e-waste must be classified as RECYCLABLE
+    if _contains_any_keyword(full_text, ELECTRONICS_KEYWORDS):
+        logger.info("Electronic device / e-waste identified ('%s') -> mapped to RECYCLABLE", item_name)
+        return "recyclable", False, False
+
+    # 5. Food waste detection (by keyword or Cloud Run classification)
+    is_food = (
+        _contains_any_keyword(full_text, FOOD_WASTE_KEYWORDS)
+        or "FOOD" in cls_clean
+        or "ORGANIC" in cls_clean
     )
-    is_bio = _contains_any_keyword(full_text, BIO_KEYWORDS)
-    is_non_bio = _contains_any_keyword(full_text, NON_BIO_KEYWORDS) or cls_clean in (
-        "PLASTIC",
-        "METAL",
-        "GLASS",
+    if is_food:
+        return "food_waste", False, False
+
+    # 6. Non-Recyclable detection (by keyword or Cloud Run classification)
+    is_non_rec = (
+        _contains_any_keyword(full_text, NON_RECYCLABLE_KEYWORDS)
+        or "NON-RECYCLABLE" in cls_clean
+        or "NON_RECYCLABLE" in cls_clean
+        or "NON RECYCLABLE" in cls_clean
+        or "NON-BIO" in cls_clean
+        or "NON_BIO" in cls_clean
     )
+    if is_non_rec:
+        return "non_recyclable", False, False
 
-    # 4. Ambiguous or mixed materials check
-    matched_categories = [is_organic, is_bio, is_non_bio].count(True)
-    if matched_categories > 1:
-        logger.info(
-            "Item '%s' contains mixed or ambiguous materials -> manual review",
-            item_name,
-        )
-        return None, False, True
+    # 7. Recyclable detection (by keyword or Cloud Run classification)
+    is_rec = (
+        _contains_any_keyword(full_text, RECYCLABLE_KEYWORDS)
+        or "RECYCLABLE" in cls_clean
+        or "BIO" in cls_clean
+    )
+    if is_rec:
+        return "recyclable", False, False
 
-    # 5. Clear single-category mapping
-    if is_organic:
-        return "organic", False, False
+    # 8. Unfamiliar objects with clear Cloud Run classification
+    # Do not reject unfamiliar objects simply because they are not in a predefined list
+    if "RECYCL" in cls_clean and "NON" not in cls_clean:
+        return "recyclable", False, False
+    if "NON" in cls_clean:
+        return "non_recyclable", False, False
+    if "FOOD" in cls_clean or "ORGANIC" in cls_clean:
+        return "food_waste", False, False
 
-    if is_bio:
-        return "bio", False, False
-
-    if is_non_bio:
-        return "non_bio", False, False
-
-    # 6. Safety fallback: If material cannot be determined from text, never guess
+    # 9. Fallback if genuinely indeterminate
     logger.info(
         "Item '%s' material could not be determined reliably -> manual review",
         item_name,

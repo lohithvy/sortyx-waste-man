@@ -19,13 +19,17 @@ def validate_category(raw: str) -> WasteCategory:
     """
     cleaned = raw.strip().lower().replace("-", "_").replace(" ", "_")
     valid_map = {
-        "bio": WasteCategory.BIO,
-        "organic": WasteCategory.ORGANIC,
-        "non_bio": WasteCategory.NON_BIO,
-        "nonbio": WasteCategory.NON_BIO,
+        "food_waste": WasteCategory.FOOD_WASTE,
+        "food": WasteCategory.FOOD_WASTE,
+        "organic": WasteCategory.FOOD_WASTE,
+        "recyclable": WasteCategory.RECYCLABLE,
+        "bio": WasteCategory.RECYCLABLE,
+        "non_recyclable": WasteCategory.NON_RECYCLABLE,
+        "non_bio": WasteCategory.NON_RECYCLABLE,
+        "nonbio": WasteCategory.NON_RECYCLABLE,
     }
     if cleaned not in valid_map:
-        raise ValueError(f"Invalid waste category: '{raw}'. Must be bio, organic, or non_bio.")
+        raise ValueError(f"Invalid waste category: '{raw}'. Must be Food Waste, Recyclable, or Non-Recyclable.")
     return valid_map[cleaned]
 
 

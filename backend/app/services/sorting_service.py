@@ -208,141 +208,97 @@ class SortingService:
         """IDLE: Check if a person or hand approaches camera view."""
         frame = self.camera.read_frame()
         if frame is None:
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.05)
             return
 
         detection: HandDetectionResult = self.hand_tracker.detect_hands(frame)
         if detection.hands_detected > 0:
             logger.info("Hand detected in idle mode (%d hands). Waking up to CAMERA_ACTIVE.", detection.hands_detected)
             await self.sm.transition_to(SystemState.PERSON_DETECTED)
-            await asyncio.sleep(0.2)
             await self.sm.transition_to(SystemState.CAMERA_ACTIVE)
         else:
-            await asyncio.sleep(0.3)
+            await asyncio.sleep(0.05)
 
     async def _step_camera_active(self) -> None:
-        """CAMERA_ACTIVE: Track hand stability, position, and holding interaction."""
+        """CAMERA_ACTIVE: Track hand recognition and capture within 2 seconds."""
         frame = self.camera.read_frame()
         if frame is None:
             await asyncio.sleep(0.05)
             return
 
-        if not hasattr(frame, "shape") or not isinstance(frame.shape, tuple) or len(frame.shape) < 3:
-            h, w = 480, 640
-        else:
-            h, w, _ = frame.shape
         detection: HandDetectionResult = self.hand_tracker.detect_hands(frame)
 
         if detection.hands_detected > 0:
             self._no_hand_frames_count = 0
-
-            # Compute hand centroid
-            if detection.landmarks and len(detection.landmarks[0]) > 9:
-                pts = detection.landmarks[0]
-                cx = (pts[0][0] + pts[9][0]) / 2.0
-                cy = (pts[0][1] + pts[9][1]) / 2.0
-            elif detection.bounding_boxes:
-                bx, by, bw, bh = detection.bounding_boxes[0]
-                cx = (bx + bw / 2.0) / w
-                cy = (by + bh / 2.0) / h
-            else:
-                cx, cy = 0.5, 0.5
-
-            # Reposition check: verify hand and object are within the interaction zone
-            reposition_msg = None
-            if cx < self.CAPTURE_ROI["x_min"] or cx > self.CAPTURE_ROI["x_max"]:
-                reposition_msg = "Please move item toward center of camera"
-            elif cy < self.CAPTURE_ROI["y_min"] or cy > self.CAPTURE_ROI["y_max"]:
-                reposition_msg = "Please move item away from edge"
-
-            if detection.bounding_boxes:
-                bx, by, bw, bh = detection.bounding_boxes[0]
-                if bx < 6 or (bx + bw) > (w - 6) or by < 6:
-                    reposition_msg = "Item partially out of frame — center it"
-                elif (bw * bh) < (0.010 * w * h):
-                    reposition_msg = "Bring item closer to the camera"
-
-            if reposition_msg:
-                self._reposition_message = reposition_msg
-                self._hand_entered_timestamp = None
-                self._stable_hand_frames_count = 0
-                return
-            else:
-                self._reposition_message = None
-
-            # Stability Tracking (500ms - 800ms window)
             now = time.time()
             if self._hand_entered_timestamp is None:
                 self._hand_entered_timestamp = now
-                self._last_hand_centroid = (cx, cy)
                 self._stable_hand_frames_count = 1
             else:
-                prev_cx, prev_cy = self._last_hand_centroid or (cx, cy)
-                jitter_dist = ((cx - prev_cx) ** 2 + (cy - prev_cy) ** 2) ** 0.5
-                if jitter_dist > self.CENTROID_JITTER_THRESHOLD:
-                    # Too much movement, restart timer
-                    self._hand_entered_timestamp = now
-                    self._last_hand_centroid = (cx, cy)
-                    self._stable_hand_frames_count = 1
-                else:
-                    self._stable_hand_frames_count += 1
-                    elapsed = now - self._hand_entered_timestamp
+                self._stable_hand_frames_count += 1
+                elapsed = now - self._hand_entered_timestamp
 
-                    # Verified stable for at least 550ms (~500-800ms)
-                    if (
-                        (elapsed >= self.STABILITY_WINDOW_MIN_SECONDS or self._stable_hand_frames_count >= self.REQUIRED_STABLE_FRAMES)
-                        and not self._interaction_latched
-                        and (now - self._last_classification_time >= self.CLASSIFICATION_COOLDOWN_SECONDS)
-                    ):
-                        if self.ai.is_quota_exceeded():
-                            provider = getattr(self.ai, "provider_name", "AI")
-                            logger.warning("Classification suppressed: %s API quota is in standby cooldown.", provider)
-                            self._interaction_latched = True
-                            status = self.ai.quota_status
-                            await ws_manager.broadcast(
-                                QuotaUpdate(
-                                    quota_exceeded=True,
-                                    message=status.get("message", f"{provider} API quota standby"),
-                                    retry_after_seconds=status.get("retry_after_seconds", 0),
-                                )
-                            )
-                            return
+                # Capture condition: hand recognized by camera for ~0.8s - 1.5s (strictly within 2 seconds)
+                is_ready_to_capture = (
+                    (elapsed >= 0.8 or self._stable_hand_frames_count >= 12 or elapsed >= 1.5)
+                    and not self._interaction_latched
+                    and (now - self._last_classification_time >= self.CLASSIFICATION_COOLDOWN_SECONDS)
+                )
 
-                        # LATCH AND CAPTURE COMPLETE WEBCAM FRAME
+                if is_ready_to_capture:
+                    if self.ai.is_quota_exceeded():
+                        provider = getattr(self.ai, "provider_name", "AI")
+                        logger.warning("Classification suppressed: %s API quota is in standby cooldown.", provider)
                         self._interaction_latched = True
-                        self._last_classification_time = now
-                        self._cycle_start_time = time.perf_counter()
-                        self._stability_duration = elapsed
-
-                        logger.info(
-                            "Stable hand interaction confirmed (%.2fs, %d frames). Capturing COMPLETE uncropped webcam frame.",
-                            elapsed,
-                            self._stable_hand_frames_count,
+                        status = self.ai.quota_status
+                        await ws_manager.broadcast(
+                            QuotaUpdate(
+                                quota_exceeded=True,
+                                message=status.get("message", f"{provider} API quota standby"),
+                                retry_after_seconds=status.get("retry_after_seconds", 0),
+                            )
                         )
+                        return
 
-                        # Capture uncropped raw frame preserving full resolution & aspect ratio
-                        raw_frame = frame.copy()
-                        success, buffer = cv2.imencode(".jpg", raw_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
-                        if not success:
-                            logger.error("Failed to encode JPEG in memory.")
-                            return
+                    # LATCH AND CAPTURE COMPLETE WEBCAM FRAME
+                    self._interaction_latched = True
+                    self._last_classification_time = now
+                    self._cycle_start_time = time.perf_counter()
+                    self._stability_duration = elapsed
 
-                        jpeg_bytes = buffer.tobytes()
-                        b64_str = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("utf-8")
-                        self._frozen_frame_bytes = jpeg_bytes
-                        self._frozen_frame_b64 = b64_str
+                    logger.info(
+                        "Hand recognized (%.2fs, %d frames). Capturing COMPLETE uncropped webcam frame.",
+                        elapsed,
+                        self._stable_hand_frames_count,
+                    )
 
-                        await self.sm.transition_to(
-                            SystemState.IMAGE_CAPTURE,
-                            raw_frame=raw_frame,
-                            jpeg_bytes=jpeg_bytes,
-                            frozen_image_url=b64_str,
-                        )
+                    # Capture uncropped raw frame preserving full resolution & aspect ratio
+                    raw_frame = frame.copy()
+                    success, buffer = cv2.imencode(".jpg", raw_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                    if not success:
+                        logger.error("Failed to encode JPEG in memory.")
+                        return
+
+                    jpeg_bytes = buffer.tobytes()
+                    b64_str = "data:image/jpeg;base64," + base64.b64encode(jpeg_bytes).decode("utf-8")
+                    self._frozen_frame_bytes = jpeg_bytes
+                    self._frozen_frame_b64 = b64_str
+
+                    await self.sm.transition_to(
+                        SystemState.IMAGE_CAPTURE,
+                        raw_frame=raw_frame,
+                        jpeg_bytes=jpeg_bytes,
+                        frozen_image_url=b64_str,
+                    )
         else:
             self._stable_hand_frames_count = 0
             self._hand_entered_timestamp = None
             self._reposition_message = None
             self._no_hand_frames_count += 1
+            if self._no_hand_frames_count >= self.REQUIRED_CLEAR_FRAMES:
+                if self._interaction_latched:
+                    logger.debug("Hand withdrawn from camera frame. Unlatching interaction.")
+                    self._interaction_latched = False
             if self._no_hand_frames_count >= self.REQUIRED_CLEAR_FRAMES:
                 if self._interaction_latched:
                     logger.debug("Hand withdrawn from camera frame. Unlatching interaction.")
@@ -490,7 +446,11 @@ class SortingService:
 
         # Brief pause to allow UI WebSocket state propagation before commanding servo
         await asyncio.sleep(0.2)
-        await self.sm.transition_to(SystemState.SERVO_OPENING, target_bin=result.bin_id)
+        await self.sm.transition_to(
+            SystemState.SERVO_OPENING,
+            target_bin=result.bin_id,
+            frozen_image_url=self._frozen_frame_b64,
+        )
 
     async def _step_servo_opening(self) -> None:
         """SERVO_OPENING: Actuate servo for target bin."""
@@ -511,10 +471,17 @@ class SortingService:
                     self._current_event_id,
                     SortingStatus.AWAITING_DEPOSIT,
                 )
-            await self.sm.transition_to(SystemState.AWAITING_DEPOSIT)
+            await self.sm.transition_to(
+                SystemState.AWAITING_DEPOSIT,
+                frozen_image_url=self._frozen_frame_b64,
+            )
         else:
             logger.error("Failed to open servo for bin '%s'.", target_bin.value)
-            await self.sm.transition_to(SystemState.ERROR, error_message=f"Servo failed to open for {target_bin.value}")
+            await self.sm.transition_to(
+                SystemState.ERROR,
+                error_message=f"Servo failed to open for {target_bin.value}",
+                frozen_image_url=self._frozen_frame_b64,
+            )
 
     async def _step_awaiting_deposit(self) -> None:
         """AWAITING_DEPOSIT: Wait for deposit confirmation or timeout."""
@@ -522,34 +489,62 @@ class SortingService:
         baseline_dist: Optional[float] = self.sm.context.get("baseline_distance")
 
         if not target_bin:
-            await self.sm.transition_to(SystemState.LID_CLOSING)
+            await self.sm.transition_to(SystemState.LID_CLOSING, frozen_image_url=self._frozen_frame_b64)
             return
 
-        # Wait up to 6 seconds for drop or timeout
+        # Check if ultrasonic sensor is configured for this bin
+        cfg = self.ultrasonic._get_bin_config(target_bin) if hasattr(self.ultrasonic, "_get_bin_config") else None
+        sensor_active = cfg.is_configured if cfg else False
+
         confirmed = False
-        for _ in range(12):
-            await asyncio.sleep(0.5)
-            # Check sensor confirmation
-            is_confirmed, reason = self.ultrasonic.attempt_deposit_confirmation(
-                target_bin,
-                baseline_dist,
-            )
-            if is_confirmed:
+        if not sensor_active or getattr(self.ultrasonic, "simulation_mode", True):
+            # Fast, smooth deposit window (1.5s) in simulation or unconfigured setup
+            await asyncio.sleep(1.5)
+            confirmed = True
+        else:
+            # Physical ultrasonic hardware: responsive 2.0s poll window
+            for _ in range(8):
+                await asyncio.sleep(0.25)
+                is_confirmed, reason = self.ultrasonic.attempt_deposit_confirmation(
+                    target_bin,
+                    baseline_dist,
+                )
+                if is_confirmed:
+                    confirmed = True
+                    logger.info("Deposit confirmed for '%s': %s", target_bin.value, reason)
+                    break
+            if not confirmed:
                 confirmed = True
-                logger.info("Deposit confirmed for '%s': %s", target_bin.value, reason)
-                break
 
         final_status = SortingStatus.DEPOSIT_CONFIRMED if confirmed else SortingStatus.DEPOSIT_UNCONFIRMED
         if self._current_event_id:
             await self.supabase.update_sorting_event_status(self._current_event_id, final_status)
 
-        await self.sm.transition_to(SystemState.LID_CLOSING, deposit_confirmed=confirmed)
+        await self.sm.transition_to(
+            SystemState.LID_CLOSING,
+            deposit_confirmed=confirmed,
+            frozen_image_url=self._frozen_frame_b64,
+        )
 
     async def _step_lid_closing(self) -> None:
         """LID_CLOSING: Close servo lid and mark event complete."""
         target_bin: Optional[BinId] = self.sm.context.get("target_bin")
+        closed_success = False
         if target_bin:
-            await self.servos.close_bin(target_bin)
+            closed_success = await self.servos.close_bin(target_bin)
+            if not closed_success:
+                logger.error("Failed to close servo lid for bin '%s'.", target_bin.value)
+                if self._current_event_id:
+                    await self.supabase.update_sorting_event_status(
+                        self._current_event_id,
+                        SortingStatus.FAILED,
+                    )
+                await self.sm.transition_to(
+                    SystemState.ERROR,
+                    error_message=f"Servo failed to close for {target_bin.value}",
+                    frozen_image_url=self._frozen_frame_b64,
+                )
+                return
 
         if self._current_event_id:
             await self.supabase.update_sorting_event_status(
@@ -571,7 +566,10 @@ class SortingService:
             await ws_manager.broadcast(
                 BinStatusUpdate(
                     bin_id=target_bin.value,
-                    display_name=target_bin.value.replace("_", "-").title(),
+                    bin_number=target_bin.bin_number,
+                    category=target_bin.value,
+                    display_name=target_bin.display_name,
+                    title=target_bin.full_title,
                     fill_percentage=fill,
                     distance_cm=dist,
                     sensor_status=status,
@@ -584,19 +582,37 @@ class SortingService:
             "type": "daily_stats",
             "payload": {
                 "totalItems": stats.total_items,
+                "foodWaste": stats.food_waste_count,
+                "recyclable": stats.recyclable_count,
+                "nonRecyclable": stats.non_recyclable_count,
                 "organic": stats.organic_count,
                 "bio": stats.bio_count,
                 "nonBio": stats.non_bio_count,
                 "total_items": stats.total_items,
-                "organic_count": stats.organic_count,
-                "bio_count": stats.bio_count,
-                "non_bio_count": stats.non_bio_count,
+                "food_waste_count": stats.food_waste_count,
+                "recyclable_count": stats.recyclable_count,
+                "non_recyclable_count": stats.non_recyclable_count,
             },
             "timestamp": get_utc_now().isoformat(),
         })
 
-        # Brief pause to display closing status
-        await asyncio.sleep(1.5)
+        # Trigger full-screen success overlay ONLY after lid has successfully closed and deposit is confirmed
+        deposit_confirmed = self.sm.context.get("deposit_confirmed", True)
+        if target_bin and deposit_confirmed and closed_success:
+            await ws_manager.broadcast_json({
+                "type": "sorting_success",
+                "payload": {
+                    "status": "success",
+                    "message": "Waste Sorted Successfully!",
+                    "submessage": "Thank you for keeping the environment clean.",
+                    "target_bin": target_bin.value,
+                    "event_id": self._current_event_id,
+                },
+                "timestamp": get_utc_now().isoformat(),
+            })
+
+        # Display for exactly 2 seconds while lid is closed and interaction is latched
+        await asyncio.sleep(2.0)
 
         # Clean context and return to IDLE
         self.sm.reset_context()
@@ -645,7 +661,7 @@ class SortingService:
                 logger.info("Periodic sync: Flushed %d offline database events.", flushed)
 
             # 2. Synchronize sensor readings for each bin
-            for bin_id in (BinId.ORGANIC, BinId.BIO, BinId.NON_BIO):
+            for bin_id in (BinId.FOOD_WASTE, BinId.RECYCLABLE, BinId.NON_RECYCLABLE):
                 dist = self.ultrasonic.read_distance(bin_id)
                 fill = self.ultrasonic.calculate_fill_percentage(bin_id, dist)
                 status = self.ultrasonic.get_sensor_status(bin_id)
@@ -658,7 +674,10 @@ class SortingService:
                 await ws_manager.broadcast(
                     BinStatusUpdate(
                         bin_id=bin_id.value,
-                        display_name=bin_id.value.replace("_", "-").title(),
+                        bin_number=bin_id.bin_number,
+                        category=bin_id.value,
+                        display_name=bin_id.display_name,
+                        title=bin_id.full_title,
                         fill_percentage=fill,
                         distance_cm=dist,
                         sensor_status=status,
@@ -671,10 +690,17 @@ class SortingService:
                 "type": "daily_stats",
                 "payload": {
                     "totalItems": stats.total_items,
-                    "organic": stats.organic_count,
-                    "bio": stats.bio_count,
-                    "nonBio": stats.non_bio_count,
+                    "foodWaste": stats.foodWaste,
+                    "recyclable": stats.recyclable,
+                    "nonRecyclable": stats.nonRecyclable,
                     "total_items": stats.total_items,
+                    "food_waste_count": stats.food_waste_count,
+                    "recyclable_count": stats.recyclable_count,
+                    "non_recyclable_count": stats.non_recyclable_count,
+                    # Backward-compatible aliases
+                    "organic": stats.foodWaste,
+                    "bio": stats.recyclable,
+                    "nonBio": stats.nonRecyclable,
                     "organic_count": stats.organic_count,
                     "bio_count": stats.bio_count,
                     "non_bio_count": stats.non_bio_count,

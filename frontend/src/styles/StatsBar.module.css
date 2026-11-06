@@ -57,10 +57,13 @@
   font-size: 18px;
 }
 
-.statIconTotal   { background: var(--color-primary-bg); color: var(--color-primary); }
-.statIconOrganic { background: var(--color-organic-bg); color: var(--color-organic); }
-.statIconBio     { background: var(--color-bio-bg);     color: var(--color-bio); }
-.statIconNonBio  { background: var(--color-non-bio-bg); color: var(--color-non-bio); }
+.statIconTotal         { background: var(--color-primary-bg);        color: var(--color-primary); }
+.statIconFoodWaste,
+.statIconOrganic       { background: var(--color-food-waste-bg);     color: var(--color-food-waste); }
+.statIconRecyclable,
+.statIconBio           { background: var(--color-recyclable-bg);     color: var(--color-recyclable); }
+.statIconNonRecyclable,
+.statIconNonBio        { background: var(--color-non-recyclable-bg); color: var(--color-non-recyclable); }
 
 .statInfo {
   display: flex;

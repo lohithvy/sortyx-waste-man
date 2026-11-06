@@ -34,14 +34,39 @@ class StateUpdate(BaseModel):
 
 
 class BinStatusUpdate(BaseModel):
-    """Broadcast when bin fill level changes."""
+    """Broadcast when bin fill level or weight changes."""
 
     type: str = "bin_status_update"
     bin_id: str
+    bin_number: Optional[int] = None
+    category: str = ""
     display_name: str = ""
+    title: str = ""
     fill_percentage: float = 0.0
     distance_cm: Optional[float] = None
+    weight_kg: Optional[float] = None
+    weight_display: str = "Not Calibrated"
+    is_calibrated: bool = False
+    load_cell_connected: bool = False
+    load_cell_status: str = "Load Cell Disconnected"
     sensor_status: SensorStatus = SensorStatus.NOT_CONFIGURED
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+
+class WeightUpdate(BaseModel):
+    """Broadcast when load cell weight updates."""
+
+    type: str = "weight_update"
+    bin_id: str
+    bin_number: Optional[int] = None
+    category: str = ""
+    display_name: str = ""
+    title: str = ""
+    weight_kg: Optional[float] = None
+    weight_display: str = "Not Calibrated"
+    is_calibrated: bool = False
+    load_cell_connected: bool = False
+    load_cell_status: str = "Load Cell Disconnected"
     timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
 

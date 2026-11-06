@@ -231,9 +231,9 @@ class HardwareStartupValidator:
 
         # Step 6: Ultrasonic Sensors Pin Configuration (Bins 1, 2, 3)
         u_info = (
-            f"Bin 1 (Organic): TRIG={hw.ultrasonic_trig_1}, ECHO={hw.ultrasonic_echo_1} | "
-            f"Bin 2 (Bio): TRIG={hw.ultrasonic_trig_2}, ECHO={hw.ultrasonic_echo_2} | "
-            f"Bin 3 (Non-Bio): TRIG={hw.ultrasonic_trig_3}, ECHO={hw.ultrasonic_echo_3}"
+            f"Bin 1 (Food Waste): TRIG={hw.ultrasonic_trig_1}, ECHO={hw.ultrasonic_echo_1} | "
+            f"Bin 2 (Recyclable): TRIG={hw.ultrasonic_trig_2}, ECHO={hw.ultrasonic_echo_2} | "
+            f"Bin 3 (Non-Recyclable): TRIG={hw.ultrasonic_trig_3}, ECHO={hw.ultrasonic_echo_3}"
         )
         steps.append(
             PreflightStepResult(
@@ -246,16 +246,16 @@ class HardwareStartupValidator:
 
         # Step 7: HX711 24-bit ADC Pin Configuration (Bins 1, 2, 3)
         hx_info = (
-            f"Bin 1 (Organic): DT={hw.hx711_dt_1}, SCK={hw.hx711_sck_1} | "
-            f"Bin 2 (Bio): DT={hw.hx711_dt_2}, SCK={hw.hx711_sck_2} | "
-            f"Bin 3 (Non-Bio): DT={hw.hx711_dt_3}, SCK={hw.hx711_sck_3}"
+            f"Bin 1 (Food Waste): DT={hw.hx711_dt_1}, SCK={hw.hx711_sck_1} | "
+            f"Bin 2 (Recyclable): DT={hw.hx711_dt_2}, SCK={hw.hx711_sck_2} | "
+            f"Bin 3 (Non-Recyclable): DT={hw.hx711_dt_3}, SCK={hw.hx711_sck_3}"
         )
         steps.append(
             PreflightStepResult(
                 step=7,
                 name="HX711 24-bit Load Cell ADC Pins",
                 status="PASSED",
-                details=f"{hx_info} [DISABLED - Reserved for future integration].",
+                details=f"{hx_info}. Three independent ADC channels enabled for live weight monitoring.",
             )
         )
 
@@ -265,7 +265,7 @@ class HardwareStartupValidator:
                 step=8,
                 name="Load Cell Service State",
                 status="PASSED",
-                details="HX711 load cell drivers are disabled at current stage; pins preserved and unconflicted.",
+                details="HX711 load cell drivers enabled for weight monitoring; uncalibrated guardrail active.",
                 recommendation=None,
             )
         )
@@ -321,12 +321,22 @@ class HardwareStartupValidator:
 
     @classmethod
     def _is_raspberry_pi(cls) -> bool:
-        """Check if executing on physical Raspberry Pi hardware."""
-        dt_model = Path("/proc/device-tree/model")
-        if dt_model.exists():
+        """Check if executing on physical Raspberry Pi hardware (Raspberry Pi 5 / Pi 4)."""
+        for path_str in ("/proc/device-tree/model", "/sys/firmware/devicetree/base/model"):
+            dt_model = Path(path_str)
+            if dt_model.exists():
+                try:
+                    content = dt_model.read_text(encoding="utf-8", errors="ignore")
+                    if "Raspberry Pi" in content:
+                        return True
+                except Exception:
+                    pass
+        cpu_info = Path("/proc/cpuinfo")
+        if cpu_info.exists():
             try:
-                content = dt_model.read_text(encoding="utf-8", errors="ignore")
-                return "Raspberry Pi" in content
+                content = cpu_info.read_text(encoding="utf-8", errors="ignore")
+                if "Raspberry Pi" in content or "BCM" in content or "RP1" in content:
+                    return True
             except Exception:
                 pass
         return False
