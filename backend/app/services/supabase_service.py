@@ -382,29 +382,28 @@ class SupabaseService:
         stats = DailyStats()
         start_utc, end_utc = get_ist_today_range()
 
-        # 1. Query completed events from Supabase if online
+        # 1. Query events from Supabase live schema if online
         if self.is_connected:
             try:
                 res = (
-                    self._client.table("sorting_events")
-                    .select("category, sorting_status")
-                    .gte("created_at", start_utc.isoformat())
-                    .lt("created_at", end_utc.isoformat())
-                    .eq("sorting_status", SortingStatus.COMPLETED.value)
+                    self._client.table("classification_events")
+                    .select("classification, servo_outcome")
+                    .gte("classified_at", start_utc.isoformat())
+                    .lt("classified_at", end_utc.isoformat())
                     .execute()
                 )
                 if res.data:
                     for row in res.data:
                         stats.total_items += 1
-                        cat = row.get("category")
-                        if cat == "organic":
+                        cls_name = str(row.get("classification") or "").lower()
+                        if "organic" in cls_name:
                             stats.organic_count += 1
-                        elif cat == "bio":
+                        elif "recyclable" in cls_name and "non" not in cls_name:
                             stats.bio_count += 1
-                        elif cat == "non_bio":
+                        elif "non" in cls_name:
                             stats.non_bio_count += 1
             except Exception as exc:
-                logger.warning("Supabase stats query failed: %s. Falling back to offline counts.", exc)
+                logger.debug("Supabase stats query deferred: %s. Falling back to offline counts.", exc)
 
         # 2. Add local offline completed events created today in IST (avoids double counting)
         for ev_id, ev in self._offline_events_queue.items():
