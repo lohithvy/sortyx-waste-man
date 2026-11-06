@@ -31,6 +31,8 @@ pip-delete-this-directory.txt
 
 # ----- Node.js -----
 node_modules/
+.vite/
+frontend/.vite/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
