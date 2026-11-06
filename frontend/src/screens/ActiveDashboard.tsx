@@ -5,6 +5,7 @@ import CameraFeed from '../components/CameraFeed';
 import DetectedWastePanel from '../components/DetectedWastePanel';
 import StatsBar from '../components/StatsBar';
 import SortingSuccessOverlay from '../components/SortingSuccessOverlay';
+import AdScreensaver from '../components/AdScreensaver';
 import { useAppState } from '../state/AppStateContext';
 
 export default function ActiveDashboard() {
@@ -31,6 +32,7 @@ export default function ActiveDashboard() {
       </div>
 
       {state.sortingSuccess && <SortingSuccessOverlay />}
+      <AdScreensaver />
     </>
   );
 }

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Sortyx 2.0 Kiosk
+Comment=Start Sortyx 2.0 Smart Waste Management on Raspberry Pi Boot
+Exec=/bin/bash -c "sleep 3 && /home/pi/Sortyx2/start_sortyx.sh"
+Terminal=false
+Categories=Utility;Application;
+StartupNotify=false
+X-GNOME-Autostart-enabled=true

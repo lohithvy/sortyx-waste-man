@@ -299,10 +299,11 @@ class SortingService:
                 if self._interaction_latched:
                     logger.debug("Hand withdrawn from camera frame. Unlatching interaction.")
                     self._interaction_latched = False
-            if self._no_hand_frames_count >= self.REQUIRED_CLEAR_FRAMES:
-                if self._interaction_latched:
-                    logger.debug("Hand withdrawn from camera frame. Unlatching interaction.")
-                    self._interaction_latched = False
+            # If no hands are seen for ~2.5 seconds (75 frames at 30fps), return to IDLE so screensaver resumes
+            if self._no_hand_frames_count >= 75:
+                logger.info("No hands detected in CAMERA_ACTIVE for 2.5s. Returning to IDLE mode.")
+                self._no_hand_frames_count = 0
+                await self.sm.transition_to(SystemState.IDLE)
 
     async def _step_image_capture(self) -> None:
         """IMAGE_CAPTURE: Freeze frame buffer, then immediately proceed to CLASSIFYING."""
